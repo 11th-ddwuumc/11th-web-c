@@ -24,6 +24,9 @@ const memberList: StudyMember[] = [member1, member2];
 
 function formatMemberId(input: unknown) {
   if (typeof input === 'string') {
+    if (input.trim() === '') {
+      return NaN;
+    }
     return Number(input);
   } else if (typeof input === 'number') {
     return input;
