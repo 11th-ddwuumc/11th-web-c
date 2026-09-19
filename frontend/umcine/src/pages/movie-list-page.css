@@ -1,4 +1,6 @@
 .container {
+    width: 100%;
+
     display: flex;
     flex-direction: column;
 
@@ -22,8 +24,8 @@
 
 .movie-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    width: 1280px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
 
     column-gap: 20px;
     row-gap: 24px;
@@ -31,4 +33,33 @@
     list-style: none;
     padding: 0;
     margin: 0;
+}
+
+/* 화면 너비가 1150 이하 3열 */
+@media (max-width: 1100px) {
+    .movie-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* 화면 너비가 750 이하 2열 */
+@media (max-width: 750px) {
+    .container {
+        padding: 24px;
+    }
+
+    .movie-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* 화면 너비가 480 이하 1열 */
+@media (max-width: 480px) {
+    .container {
+        padding: 24px 16px;
+    }
+
+    .movie-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
