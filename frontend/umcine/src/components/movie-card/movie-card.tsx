@@ -19,6 +19,11 @@ export default function MovieCard({movie, onToggleBookmark}: MovieCardProps) {
           type="button"
           className={`bookmark-button ${movie.isBookmarked ? "bookmarked" : "not-bookmarked"}`}
           aria-pressed={movie.isBookmarked}
+          aria-label={
+            movie.isBookmarked
+              ? `${movie.title} 북마크 해제`
+              : `${movie.title} 북마크 추가`
+          }
           onClick={() => onToggleBookmark(movie.id)}
         >
           <svg viewBox={movie.isBookmarked ? "80 32 24 24" : "32 32 24 24"}>
