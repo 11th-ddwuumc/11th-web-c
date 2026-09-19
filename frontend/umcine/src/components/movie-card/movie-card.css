@@ -36,23 +36,32 @@
     height: 34px;
     padding: 0;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
 
     background: var(--color-text-primary);
-
-    border: 1px solid var(--color-bg-surface);
     border-radius: 8px;
 
     cursor: pointer;
 }
 
-.bookmark-icon {
+.bookmark-button.bookmarked {
+    background-color: var(--color-action-primary);
+    border: 1px solid var(--color-action-primary);
+}
+
+.bookmark-button.not-bookmarked {
+    background-color: var(--color-text-primary);
+    border: 1px solid var(--color-bg-surface);
+}
+
+.bookmark-button svg {
     width: 24px;
     height: 24px;
+}
 
-    filter: brightness(0) invert(1);
+.bookmark-button svg path {
+    fill: var(--color-bg-surface);
 }
 
 /* 글자 영역 */
