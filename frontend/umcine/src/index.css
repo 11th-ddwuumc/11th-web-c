@@ -1,0 +1,30 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+
+    font-family: "Pretendard",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+:root {
+    --color-bg-surface: #FFFFFF;
+    --color-bg-page: #F6F7F9;
+
+    --color-text-primary: #17191e;
+    --color-text-secondary: #606774;
+    --color-text-tertiary: #969DA8;
+
+    --color-border-default: #E3E6EB;
+
+    --color-action-primary: #2563EB;
+}
