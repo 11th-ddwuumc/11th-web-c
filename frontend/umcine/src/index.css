@@ -1,0 +1,65 @@
+:root {
+  --color-bg-page: #f6f7f9;
+  --color-bg-surface: #fff;
+  --color-border-default: #e3e6eb;
+  --color-text-primary: #17191e;
+  --color-text-secondary: #606774;
+  --color-text-tertiary: #969da8;
+  --color-action-primary: #2563eb;
+
+  --radius-7: 7px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+
+  --page-gutter: 80px;
+
+  font-family:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, sans-serif;
+  color: var(--color-text-primary);
+  background: var(--color-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1024px;
+}
+
+h1,
+h2,
+p,
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+img {
+  display: block;
+}
+
+.icon-white {
+  filter: brightness(0) invert(1);
+}
