@@ -11,7 +11,13 @@ export function MovieDetailPage() {
   const [rating, setRating] = useState(0);
 
   if (!movie) {
-    return <main>영화를 찾을 수 없어요.</main>;
+    return (
+      <main className="flex min-h-[calc(100vh-90px)] items-center justify-center bg-(--color-bg-page)">
+        <p className="m-0 text-[28px] font-bold text-(--color-text-primary)">
+          영화를 찾을 수 없어요.
+        </p>
+      </main>
+    );
   }
 
   return (
