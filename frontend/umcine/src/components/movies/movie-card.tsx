@@ -7,16 +7,16 @@ interface MovieCardProps {
   onToggleBookmark: (id: number) => void;
 }
 
-export default function MovieCard({movie, onToggleBookmark}: MovieCardProps) {
+export function MovieCard({movie, onToggleBookmark}: MovieCardProps) {
   return (
-    <article className={cn("relative flex flex-col gap-[4px]")}>
+    <article className={cn("relative flex flex-col gap-1")}>
       <Link
         to="/movies/$movieId"
         params={{movieId: String(movie.id)}}
-        className={cn("flex flex-col gap-[4px]")}
+        className={cn("flex flex-col gap-1")}
       >
         <div className={cn(
-          "relative h-[274px] w-full",
+          "relative h-68.5 w-full",
           "overflow-hidden rounded-[10px]",
           "bg-(--color-bg-page)",
         )}>
@@ -27,15 +27,15 @@ export default function MovieCard({movie, onToggleBookmark}: MovieCardProps) {
           />
         </div>
         <div className={cn(
-          "h-[22px] pt-[5px]",
-          "text-[14px] leading-[100%] font-[800] align-middle",
+          "h-5.5 pt-1.25",
+          "text-[14px] leading-[100%] font-extrabold align-middle",
           "text-(--color-text-primary)",
         )}>
           {movie.title}
         </div>
         <div className={cn(
-          "h-[14px]",
-          "text-[12px] font-[400] align-middle",
+          "h-3.5",
+          "text-[12px] font-normal align-middle",
           "text-(--color-text-tertiary)",
         )}>
           {movie.releaseDate}
@@ -45,7 +45,7 @@ export default function MovieCard({movie, onToggleBookmark}: MovieCardProps) {
         type="button"
         className={cn(
           "absolute right-2 top-2 z-10",
-          "grid size-[34px] place-items-center",
+          "grid size-8.5 place-items-center",
           "rounded-lg p-0",
           "cursor-pointer border text-white",
           "transition-colors",

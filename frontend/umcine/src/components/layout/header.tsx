@@ -6,54 +6,54 @@ export default function Header() {
     <header className={cn(
       "flex items-center justify-between",
       "border-b border-(--color-border-default)",
-      "px-[80px] py-[24px]",
+      "px-20 py-6",
     )}>
-      <div className={cn("flex items-center gap-[42px]")}>
-        <a className={cn("flex items-center gap-[10px] text-inherit no-underline")} href="">
+      <div className={cn("flex items-center gap-10.5")}>
+        <a className={cn("flex items-center gap-2.5 text-inherit no-underline")} href="">
           <div className={cn(
-            "flex size-[32px] flex-col items-center justify-center",
-            "rounded-[8px] border-2 border-(--color-text-primary)",
-            "px-0 py-[6px]",
+            "flex size-8 flex-col items-center justify-center",
+            "rounded-lg border-2 border-(--color-text-primary)",
+            "px-0 py-1.5",
           )}>
             <img src="/icons/movie.svg" alt=""/>
           </div>
           <span className={cn(
-            "text-[20px] font-[900] tracking-[-0.7px] align-middle",
+            "text-[20px] font-black tracking-[-0.7px] align-middle",
           )}>UMCine</span>
         </a>
 
-        <nav className={cn("flex items-center gap-[30px]")}>
+        <nav className={cn("flex items-center gap-7.5")}>
           <Link
             to="/"
             className={cn(
-              "text-center text-[14px] font-[700] align-middle no-underline",
+              "text-center text-[14px] font-bold align-middle no-underline",
               "text-(--color-text-primary) underline decoration-solid",
             )}
           >영화</Link>
           <Link
             to="/search"
             className={cn(
-              "text-center text-[14px] font-[700] align-middle no-underline",
+              "text-center text-[14px] font-bold align-middle no-underline",
               "text-(--color-text-secondary)",
             )}
           >검색</Link>
           <Link
             to="/"
             className={cn(
-              "text-center text-[14px] font-[700] align-middle no-underline",
+              "text-center text-[14px] font-bold align-middle no-underline",
               "text-(--color-text-secondary)",
             )}
           >내 정보</Link>
         </nav>
       </div>
 
-      <div className={cn("flex items-center gap-[10px]")}>
+      <div className={cn("flex items-center gap-2.5")}>
         <Link
           to="/search"
           className={cn(
-            "flex size-[42px] flex-col items-center justify-center",
-            "rounded-[8px] border border-(--color-border-default)",
-            "bg-(--color-bg-surface) px-[6px] py-[1px]",
+            "flex size-10.5 flex-col items-center justify-center",
+            "rounded-lg border border-(--color-border-default)",
+            "bg-(--color-bg-surface) px-1.5 py-px",
             "cursor-pointer text-(--color-text-secondary)",
           )}
           aria-label="검색"
@@ -67,10 +67,10 @@ export default function Header() {
 
         <button
           className={cn(
-            "h-[42px] w-[71px] px-[16px] py-0",
-            "rounded-[8px] border border-(--color-bg-surface)",
+            "h-10.5 w-17.75 px-4 py-0",
+            "rounded-lg border border-(--color-bg-surface)",
             "bg-(--color-action-primary)",
-            "text-center text-[14px] font-[800] align-middle",
+            "text-center text-[14px] font-extrabold align-middle",
             "cursor-pointer text-(--color-bg-surface)",
           )}
           type="button"
