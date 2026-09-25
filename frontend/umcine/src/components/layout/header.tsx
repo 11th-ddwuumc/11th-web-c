@@ -9,7 +9,7 @@ export default function Header() {
       "px-20 py-6",
     )}>
       <div className={cn("flex items-center gap-10.5")}>
-        <a className={cn("flex items-center gap-2.5 text-inherit no-underline")} href="">
+        <Link className={cn("flex items-center gap-2.5 text-inherit no-underline")} to="/">
           <div className={cn(
             "flex size-8 flex-col items-center justify-center",
             "rounded-lg border-2 border-(--color-text-primary)",
@@ -20,7 +20,7 @@ export default function Header() {
           <span className={cn(
             "text-[20px] font-black tracking-[-0.7px] align-middle",
           )}>UMCine</span>
-        </a>
+        </Link>
 
         <nav className={cn("flex items-center gap-7.5")}>
           <Link
