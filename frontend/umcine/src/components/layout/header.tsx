@@ -25,17 +25,29 @@ export default function Header() {
         <nav className={cn("flex items-center gap-7.5")}>
           <Link
             to="/"
+            activeOptions={{exact: true}}
             className={cn(
-              "text-center text-[14px] font-bold align-middle no-underline",
-              "text-(--color-text-primary) underline decoration-solid",
+              "text-center text-[14px] font-bold align-middle",
             )}
+            activeProps={{
+              className: "text-(--color-text-primary) underline decoration-solid",
+            }}
+            inactiveProps={{
+              className: "text-(--color-text-secondary) no-underline",
+            }}
           >영화</Link>
           <Link
             to="/search"
+            activeOptions={{exact: true}}
             className={cn(
-              "text-center text-[14px] font-bold align-middle no-underline",
-              "text-(--color-text-secondary)",
+              "text-center text-[14px] font-bold align-middle",
             )}
+            activeProps={{
+              className: "text-(--color-text-primary) underline decoration-solid",
+            }}
+            inactiveProps={{
+              className: "text-(--color-text-secondary) no-underline",
+            }}
           >검색</Link>
           <Link
             to="/"
