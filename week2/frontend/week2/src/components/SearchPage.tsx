@@ -1,34 +1,42 @@
-import React, { useState } from 'react';
-import { Header } from './header';
+import React, { useMemo, useState } from 'react';
+import { Link, getRouteApi } from '@tanstack/react-router';
+import { Header } from '../components/header';
 import { movies } from '../data/movies';
-import type { Movie } from '../types/movie';
+
+const routeApi = getRouteApi('/search');
 
 export const SearchPage: React.FC = () => {
-  const [keyword, setKeyword] = useState('');
-  const [submittedKeyword, setSubmittedKeyword] = useState('');
-  const [results, setResults] = useState<Movie[]>([]);
-  const [searched, setSearched] = useState(false);
+  const { query } = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
+
+    const [keyword, setKeyword] = useState(query);
+    const [prevQuery, setPrevQuery] = useState(query);
+
+    if (prevQuery !== query) {
+      setPrevQuery(query);
+      setKeyword(query);
+    }
+
+  const trimmed = query.trim();
+
+  const results = useMemo(() => {
+    if (!trimmed) return [];
+    const lower = trimmed.toLowerCase();
+    return movies.filter(
+      (m) =>
+        m.title.toLowerCase().includes(lower) ||
+        m.originalTitle.toLowerCase().includes(lower)
+    );
+  }, [trimmed]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keyword.trim()) return;
-
-    const filtered = movies.filter(
-      (movie) =>
-        movie.title.includes(keyword.trim()) ||
-        movie.originalTitle.toLowerCase().includes(keyword.trim().toLowerCase())
-    );
-
-    setResults(filtered);
-    setSubmittedKeyword(keyword.trim());
-    setSearched(true);
+    navigate({ search: { query: keyword.trim() } });
   };
 
   const handleReset = () => {
     setKeyword('');
-    setSubmittedKeyword('');
-    setResults([]);
-    setSearched(false);
+    navigate({ search: { query: '' } });
   };
 
   return (
@@ -43,7 +51,6 @@ export const SearchPage: React.FC = () => {
           className="w-full bg-white rounded-xl shadow-md p-2 pl-5 flex items-center gap-3"
         >
           <img src="/icons/search.svg" alt="search" className="w-5 h-5 shrink-0 opacity-60" />
-
           <input
             type="text"
             value={keyword}
@@ -51,18 +58,11 @@ export const SearchPage: React.FC = () => {
             placeholder="예: 스파이더맨"
             className="w-full bg-transparent text-gray-900 placeholder-gray-400 text-base focus:outline-none py-2"
           />
-
           {keyword && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="shrink-0"
-              aria-label="clear"
-            >
+            <button type="button" onClick={handleReset} className="shrink-0" aria-label="clear">
               <img src="/icons/close.svg" alt="clear" className="w-4 h-4 opacity-50 hover:opacity-80" />
             </button>
           )}
-
           <button
             type="submit"
             className="bg-[#111827] hover:bg-black text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors shrink-0"
@@ -71,24 +71,21 @@ export const SearchPage: React.FC = () => {
           </button>
         </form>
 
-        {searched && (
+        {!trimmed ? (
+          <p className="text-gray-400 text-center py-16">검색어를 입력해 주세요.</p>
+        ) : (
           <div className="mt-8">
             <div className="flex items-center justify-between border-b border-gray-700 pb-3 mb-6">
-              <h2 className="text-white font-semibold">
-                '{submittedKeyword}' 검색 결과
-              </h2>
+              <h2 className="text-white font-semibold">'{trimmed}' 검색 결과</h2>
               <span className="text-gray-400 text-sm">영화 {results.length}편 · 1페이지</span>
             </div>
 
             {results.length === 0 ? (
-              <p className="text-gray-400 text-center py-16">검색 결과가 없습니다.</p>
+              <p className="text-gray-400 text-center py-16">검색 결과가 없어요.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
                 {results.map((movie) => (
-                  <div
-                    key={movie.id}
-                    className="flex gap-4 border-b border-gray-800 pb-6"
-                  >
+                  <div key={movie.id} className="flex gap-4 border-b border-gray-800 pb-6">
                     <div className="relative w-28 h-40 shrink-0">
                       <img
                         src={movie.posterPath}
@@ -107,13 +104,14 @@ export const SearchPage: React.FC = () => {
                         {movie.originalTitle} · {movie.releaseDate}
                       </p>
                       <p className="text-gray-300 text-sm line-clamp-3">{movie.overview}</p>
-                      <a
-                        href={`/movie/${movie.id}`}
+                      <Link
+                        to="/movies/$movieId"
+                        params={{ movieId: String(movie.id) }}
                         className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm font-medium mt-3"
                       >
                         상세 보기
                         <img src="/icons/arrow-right.svg" alt="" className="w-3 h-3" />
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 ))}

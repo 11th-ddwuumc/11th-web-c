@@ -1,28 +1,32 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Header } from './header';
+import { Link, getRouteApi } from '@tanstack/react-router';
+import { Header } from '../components/header';
+import type { Movie } from '../types/movie';
 import { movies } from '../data/movies';
 
-export const MovieDetailPage: React.FC = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const movie = movies.find((m) => m.id === Number(id));
+const routeApi = getRouteApi('/movies/$movieId');
 
-  const [isBookmarked, setIsBookmarked] = useState(movie?.isBookmarked ?? false);
+const NotFound: React.FC = () => (
+  <div className="min-h-screen bg-[#141414] flex flex-col">
+    <Header />
+    <div className="flex-1 flex items-center justify-center text-white">
+      영화를 찾을 수 없어요.
+    </div>
+  </div>
+);
+
+export const MovieDetailPage: React.FC = () => {
+  const { movieId } = routeApi.useParams();
+  const movie = movies.find((m) => m.id === Number(movieId));
+  // key로 영화가 바뀔 때 로컬 상태(즐겨찾기·평점·후기)를 초기화
+  return movie ? <MovieDetail key={movie.id} movie={movie} /> : <NotFound />;
+};
+
+const MovieDetail: React.FC<{ movie: Movie }> = ({ movie }) => {
+  const [isBookmarked, setIsBookmarked] = useState(movie.isBookmarked ?? false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
-
-  if (!movie) {
-    return (
-      <div className="min-h-screen bg-[#141414] flex flex-col">
-        <Header />
-        <div className="flex-1 flex items-center justify-center text-white">
-          영화를 찾을 수 없습니다.
-        </div>
-      </div>
-    );
-  }
 
   const handleSaveRating = () => {
     console.log('평점:', rating, '후기:', review);
@@ -40,13 +44,13 @@ export const MovieDetailPage: React.FC = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-        <button
-          onClick={() => navigate(-1)}
+        <Link
+          to="/"
           className="absolute top-6 left-8 flex items-center gap-1 text-white text-sm font-medium hover:opacity-80"
         >
           <img src="/icons/chevron-left.svg" alt="" className="w-4 h-4" />
           영화 목록
-        </button>
+        </Link>
 
         <div className="absolute bottom-8 left-8 text-white max-w-2xl">
           <h1 className="text-4xl font-extrabold mb-2">{movie.title}</h1>

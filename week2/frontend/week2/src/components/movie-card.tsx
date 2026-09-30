@@ -13,7 +13,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onToggleBookmark })
   return (
     <div
       className="flex flex-col group cursor-pointer"
-      onClick={() => navigate(`/movie/${movie.id}`)}
+      onClick={() => navigate(`/movies/${movie.id}`)}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-gray-200 shadow-sm">
         <img
