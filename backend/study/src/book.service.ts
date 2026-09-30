@@ -1,13 +1,10 @@
 import {Injectable} from "@nestjs/common";
 import {BookRepository} from "./book.repository.js";
-import {RentalRepository} from "./rental.repository.js";
 
 @Injectable()
 export class BookService {
 
-  constructor(
-    private readonly bookRepository: BookRepository,
-    private readonly rentalRepository: RentalRepository) {
+  constructor(private readonly bookRepository: BookRepository) {
   }
 
   async getAllBooks(): Promise<any> {
