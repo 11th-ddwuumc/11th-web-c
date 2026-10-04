@@ -1,14 +1,9 @@
-import {movies} from "../../data/movies.ts";
 import {MovieCard} from "../../components/movies/movie-card.tsx";
 import Footer from "../../components/movies/footer.tsx";
-import {useState} from "react";
 import {cn} from "../../utils/cn.ts";
-import {readBookmarkIds} from "../../utils/bookmark-storage.ts";
+import {movies} from "../../data/movies.ts";
 
 export default function MovieListPage() {
-  const [movieList] = useState(movies);
-  const [bookmarkList] = useState(() => readBookmarkIds());
-  
   return (
     <main className={cn(
       "min-h-[calc(100vh-90px)] w-full bg-(--color-bg-page) pb-14.25",
@@ -30,14 +25,9 @@ export default function MovieListPage() {
           "max-[750px]:grid-cols-2",
           "max-[480px]:grid-cols-1",
         )}>
-          {movieList.map((movie) => (
+          {movies.map((movie) => (
             <li key={movie.id}>
-              <MovieCard
-                movie={{
-                  ...movie,
-                  isBookmarked: bookmarkList.includes(movie.id)
-                }}
-              />
+              <MovieCard movie={movie}/>
             </li>
           ))}
         </ul>
