@@ -18,7 +18,3 @@ export function readBookmarkIds(): number[] {
     return [];
   }
 }
-
-export function saveBookmarkIds(movieIds: number[]) {
-  localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(movieIds));
-}
