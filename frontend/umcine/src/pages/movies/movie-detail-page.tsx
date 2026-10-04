@@ -3,12 +3,27 @@ import {movies} from "../../data/movies";
 import Footer from "../../components/movies/footer.tsx";
 import {cn} from "../../utils/cn.ts";
 import {useState} from "react";
+import {readBookmarkIds, saveBookmarkIds} from "../../utils/bookmark-storage.ts";
 
 export function MovieDetailPage() {
   const {movieId} = useParams({from: "/movies/$movieId"});
   const movie = movies.find((item) => item.id === Number(movieId));
-  const [isBookmarked, setIsBookmarked] = useState(movie?.isBookmarked ?? false);
+  const [isBookmarked, setIsBookmarked] = useState(() => readBookmarkIds().includes(movie?.id ?? -1),);
   const [rating, setRating] = useState(0);
+
+  const toggleBookmark = () => {
+    if (!movie) return;
+
+    const currentIds = readBookmarkIds();
+    const isAlreadyBookmarked = currentIds.includes(movie.id);
+
+    const nextBookmarkList = isAlreadyBookmarked
+      ? currentIds.filter((id) => id !== movie.id)
+      : [...currentIds, movie.id];
+
+    saveBookmarkIds(nextBookmarkList);
+    setIsBookmarked(!isAlreadyBookmarked);
+  };
 
   if (!movie) {
     return (
@@ -106,7 +121,7 @@ export function MovieDetailPage() {
           <button
             type="button"
             aria-pressed={isBookmarked}
-            onClick={() => setIsBookmarked((current) => !current)}
+            onClick={toggleBookmark}
             className={cn(
               "flex px-4 gap-2 w-fit h-10.5 items-center cursor-pointer",
               "rounded-lg bg-(--color-action-primary) text-(--color-bg-surface)"

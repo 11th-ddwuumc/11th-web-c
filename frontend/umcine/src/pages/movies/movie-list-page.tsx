@@ -3,9 +3,11 @@ import {MovieCard} from "../../components/movies/movie-card.tsx";
 import Footer from "../../components/movies/footer.tsx";
 import {useState} from "react";
 import {cn} from "../../utils/cn.ts";
+import {readBookmarkIds, saveBookmarkIds} from "../../utils/bookmark-storage.ts";
 
 export default function MovieListPage() {
   const [movieList, setMovieList] = useState(movies);
+  const [bookmarkList, setBookmarkList] = useState(() => readBookmarkIds());
 
   const toggleBookmark = (id: number) => {
     setMovieList((currentMovies) =>
@@ -13,7 +15,18 @@ export default function MovieListPage() {
         movie.id === id ? {...movie, isBookmarked: !movie.isBookmarked} : movie
       )
     );
-  }
+
+    setBookmarkList((currentIds) => {
+      const isBookmarked = currentIds.includes(id);  // 이미 북마크됐냐
+
+      const newBookmarkList = isBookmarked
+        ? currentIds.filter((movieId) => movieId !== id)  // 북마크 해제
+        : [...currentIds, id];  // 북마크 (리스트에 추가)
+
+      saveBookmarkIds(newBookmarkList);
+      return newBookmarkList;
+    });
+  };
 
   return (
     <main className={cn(
@@ -38,7 +51,13 @@ export default function MovieListPage() {
         )}>
           {movieList.map((movie) => (
             <li key={movie.id}>
-              <MovieCard movie={movie} onToggleBookmark={toggleBookmark}/>
+              <MovieCard
+                movie={{
+                  ...movie,
+                  isBookmarked: bookmarkList.includes(movie.id)
+                }}
+                onToggleBookmark={toggleBookmark}
+              />
             </li>
           ))}
         </ul>
