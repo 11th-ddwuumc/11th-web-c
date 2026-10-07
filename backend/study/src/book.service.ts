@@ -1,22 +1,75 @@
-import {Injectable} from "@nestjs/common";
-import {BookRepository} from "./book.repository.js";
+import {Injectable, NotFoundException} from "@nestjs/common";
+import {Book} from "./book.entity.js";
+import {InjectRepository} from "@nestjs/typeorm";
+import {Like, Repository} from "typeorm";
+import {BookResponseDto, CreateBookDto} from "./book.dto.js";
+import {Category} from "./category.entity.js";
 
 @Injectable()
 export class BookService {
 
-  constructor(private readonly bookRepository: BookRepository) {
+  constructor(
+    @InjectRepository(Book)
+    private readonly bookRepository: Repository<Book>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
+  ) {
   }
 
-  async getAllBooks(): Promise<any> {
-    return await this.bookRepository.findAll();
+  async getAllBooks(): Promise<BookResponseDto[]> {
+    const books = await this.bookRepository.find({
+      relations: {category: true},
+      order: {bookId: "DESC"},
+    });
+    return books.map(BookResponseDto.from);
   }
 
-  async getCategoryBooks(categoryId: number): Promise<any> {
-    return await this.bookRepository.findByCategory(categoryId);
+  async getCategoryBooks(categoryId: number): Promise<BookResponseDto[]> {
+    const books = await this.bookRepository.find({
+      where: {
+        category: {categoryId},
+      },
+      relations: {
+        category: true,
+      },
+      order: {
+        bookId: "DESC",
+      },
+    });
+    return books.map(BookResponseDto.from);
   }
 
-  async createBook(body: Record<string, any>): Promise<string> {
-    await this.bookRepository.create(body);
-    return "도서 등록이 완료되었습니다!";
+  async createBook(createBookDto: CreateBookDto): Promise<BookResponseDto> {
+    const category = await this.categoryRepository.findOneBy({
+      categoryId: createBookDto.categoryId,
+    });
+
+    if (!category) {
+      throw new NotFoundException("존재하지 않는 카테고리입니다.");
+    }
+
+    const book = this.bookRepository.create({
+      title: createBookDto.title,
+      description: createBookDto.description ?? null,
+      category,
+    });
+
+    const savedBook = await this.bookRepository.save(book);
+    return BookResponseDto.from(savedBook);
+  }
+
+  async searchBooks(keyword: string): Promise<BookResponseDto[]> {
+    const books = await this.bookRepository.find({
+      where: {
+        title: Like(`%${keyword}%`),
+      },
+      relations: {
+        category: true,
+      },
+      order: {
+        bookId: "DESC",
+      },
+    });
+    return books.map(BookResponseDto.from);
   }
 }
