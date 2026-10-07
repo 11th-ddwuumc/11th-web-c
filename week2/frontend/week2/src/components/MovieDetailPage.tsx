@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, getRouteApi } from '@tanstack/react-router';
-import { Header } from '../components/header';
-import type { Movie } from '../types/movie';
+import { Header } from './header';
 import { movies } from '../data/movies';
+import type { Movie } from '../types/movie';
+import { useBookmarkStore } from '../store/useBookmarkStore';
 
 const routeApi = getRouteApi('/movies/$movieId');
 
@@ -18,12 +19,13 @@ const NotFound: React.FC = () => (
 export const MovieDetailPage: React.FC = () => {
   const { movieId } = routeApi.useParams();
   const movie = movies.find((m) => m.id === Number(movieId));
-  // key로 영화가 바뀔 때 로컬 상태(즐겨찾기·평점·후기)를 초기화
   return movie ? <MovieDetail key={movie.id} movie={movie} /> : <NotFound />;
 };
 
 const MovieDetail: React.FC<{ movie: Movie }> = ({ movie }) => {
-  const [isBookmarked, setIsBookmarked] = useState(movie.isBookmarked ?? false);
+  const isBookmarked = useBookmarkStore((state) => state.isBookmarked(movie.id));
+  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
@@ -77,7 +79,7 @@ const MovieDetail: React.FC<{ movie: Movie }> = ({ movie }) => {
           </p>
 
           <button
-            onClick={() => setIsBookmarked((prev) => !prev)}
+            onClick={() => toggleBookmark(movie.id)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
               isBookmarked
                 ? 'bg-blue-600 text-white hover:bg-blue-700'

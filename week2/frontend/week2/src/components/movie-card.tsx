@@ -1,19 +1,21 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import type { Movie } from '../types/movie';
+import { useBookmarkStore } from '../store/useBookmarkStore';
 
 interface MovieCardProps {
   movie: Movie;
-  onToggleBookmark: (id: number) => void;
 }
 
-export const MovieCard: React.FC<MovieCardProps> = ({ movie, onToggleBookmark }) => {
+export const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   const navigate = useNavigate();
+  const isBookmarked = useBookmarkStore((state) => state.isBookmarked(movie.id));
+  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
 
   return (
     <div
       className="flex flex-col group cursor-pointer"
-      onClick={() => navigate(`/movies/${movie.id}`)}
+      onClick={() => navigate({ to: '/movies/$movieId', params: { movieId: String(movie.id) } })}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-gray-200 shadow-sm">
         <img
@@ -24,12 +26,12 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onToggleBookmark })
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onToggleBookmark(movie.id);
+            toggleBookmark(movie.id);
           }}
           className="absolute top-3 right-3 p-2 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm transition-colors text-white"
           aria-label="bookmark"
         >
-          {movie.isBookmarked ? (
+          {isBookmarked ? (
             <svg className="w-4 h-4 fill-blue-500 text-blue-500" viewBox="0 0 24 24">
               <path d="M5 5C5 3.89543 5.89543 3 7 3H17C18.1046 3 19 3.89543 19 5V21L12 17.5L5 21V5Z" />
             </svg>
