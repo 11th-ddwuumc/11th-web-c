@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>영화 평점 서비스 · 5주차</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #f4f6fa; color: #172033; font-family: system-ui, sans-serif; }
+        main { max-width: 900px; margin: 36px auto; padding: 20px; }
+        section { background: white; margin: 20px 0; padding: 24px; border: 1px solid #dbe1eb; border-radius: 16px; }
+        h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
+        label { display: inline-block; margin: 8px 10px 8px 0; }
+        input { display: block; padding: 10px; margin-top: 6px; max-width: 100%; }
+        button { padding: 11px 18px; background: #3248ba; color: white; border: 0; border-radius: 8px; cursor: pointer; }
+        button:disabled { opacity: .5; }
+        pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #eef1f8; padding: 16px; border-radius: 8px; }
+        article { border-top: 1px solid #dbe1eb; padding: 12px 0; }
+        .error { color: #b22222; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>영화 평점 서비스</h1>
+    <p>회원 중복 확인과 회원별 영화 평점 조회</p>
+    <section>
+        <h2>닉네임 중복 확인</h2>
+        <label>닉네임 <input id="nickname" value="수현"></label>
+        <button id="nickname-button">닉네임 확인</button>
+        <p id="nickname-message" role="status"></p>
+        <pre id="nickname-result">아직 요청하지 않았습니다.</pre>
+    </section>
+    <section>
+        <h2>이메일 중복 확인</h2>
+        <label>이메일 <input id="email" value="noco@umc.com"></label>
+        <button id="email-button">이메일 확인</button>
+        <p id="email-message" role="status"></p>
+        <pre id="email-result">아직 요청하지 않았습니다.</pre>
+    </section>
+    <section>
+        <h2>회원별 영화 평점</h2>
+        <label>회원 번호 <input id="member-id" type="number" value="1" min="1"></label>
+        <label>페이지 (0부터) <input id="page" type="number" value="0" min="0"></label>
+        <label>한 페이지 개수 <input id="size" type="number" value="1" min="1" max="100"></label>
+        <p><button id="ratings-button">전체 평점 조회</button>
+            <button id="page-button">페이지 조회</button></p>
+        <p id="ratings-message" role="status"></p>
+        <div id="rating-cards"></div>
+        <pre id="ratings-result">아직 요청하지 않았습니다.</pre>
+    </section>
+</main>
+<script>
+    const API_BASE = 'http://localhost:8080';
+    const el = (id) => document.getElementById(id);
+    async function request(path, prefix) {
+        const output = el(`${prefix}-result`);
+        const message = el(`${prefix}-message`);
+        const url = `${API_BASE}${path}`;
+        message.textContent = '요청 중…';
+        message.className = '';
+        output.textContent = `GET ${url}`;
+        try {
+            const response = await fetch(url);
+            const raw = await response.text();
+            let data;
+            try { data = JSON.parse(raw); } catch { data = raw; }
+            output.textContent = `GET ${url}\nHTTP ${response.status}\n${JSON.stringify(data, null, 2)}`;
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${data?.detail || '입력값 또는 회원 번호를 확인하세요.'}`);
+            return data;
+        } catch (error) {
+            console.error(error);
+            message.className = 'error';
+            message.textContent = error.message;
+            if (error instanceof TypeError) {
+                output.textContent += '\n응답을 읽지 못했습니다. 서버 실행 여부와 Console/Network의 CORS 정보를 확인하세요.';
+            }
+            return null;
+        }
+    }
+    for (const kind of ['nickname', 'email']) {
+        el(`${kind}-button`).addEventListener('click', async () => {
+            const button = el(`${kind}-button`);
+            button.disabled = true;
+            const value = encodeURIComponent(el(kind).value);
+            const data = await request(`/members/${kind}/${value}`, kind);
+            if (data !== null) {
+                el(`${kind}-message`).textContent = data.available ? '사용할 수 있습니다.' : '이미 사용 중입니다.';
+            }
+            button.disabled = false;
+        });
+    }
+    async function loadRatings(paginated) {
+        el('ratings-button').disabled = el('page-button').disabled = true;
+        el('rating-cards').replaceChildren();
+        const memberId = encodeURIComponent(el('member-id').value);
+        const query = paginated ? '?' + new URLSearchParams({ page: el('page').value, size: el('size').value }) : '';
+        const data = await request(`/members/${memberId}/ratings${query}`, 'ratings');
+        if (data !== null) {
+            el('ratings-message').textContent = data.length ? `${data.length}개의 평점을 불러왔습니다.` : '조회된 평점이 없습니다.';
+            for (const rating of data) {
+                const card = document.createElement('article');
+                card.textContent = `영화 #${rating.movieId} · ${rating.score}/5점 · ${rating.comment ?? '코멘트 없음'}`;
+                el('rating-cards').append(card);
+            }
+        }
+        el('ratings-button').disabled = el('page-button').disabled = false;
+    }
+    el('ratings-button').addEventListener('click', () => loadRatings(false));
+    el('page-button').addEventListener('click', () => loadRatings(true));
+</script>
+</body>
+</html>
