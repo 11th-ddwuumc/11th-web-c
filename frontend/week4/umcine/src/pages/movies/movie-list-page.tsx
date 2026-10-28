@@ -1,17 +1,35 @@
-import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useCallback } from "react";
+
+import { getMovies } from "../../api/movies/get-movies";
 
 import MovieGrid from "../../components/movies/movie-grid";
 import Pagination from "../../components/movies/pagination";
+import RequestError from "../../components/request-error";
 
-import { movies as initialMovies } from "../../data/movies";
-import type { Movie } from "../../types/movie";
+import { useApiRequest } from "../../hooks/use-api-request";
 
 import { useBookmarkStore } from "../../stores/bookmark-store";
 import { useUiStore } from "../../stores/ui-store";
 
+import { TMDB_MAX_PAGE } from "../../utils/movies/parse-page";
+import { toMovieCard } from "../../utils/movies/to-movie-card";
+
 export function MovieListPage() {
-  const [movies] = useState<Movie[]>(initialMovies);
-  const [currentPage, setCurrentPage] = useState(1);
+  const { page = 1 } = useSearch({ from: "/" });
+
+  return <MovieListContent key={page} page={page} />;
+}
+
+function MovieListContent({ page }: { page: number }) {
+  const navigate = useNavigate({ from: "/" });
+
+  const load = useCallback(() => getMovies({ page }), [page]);
+
+  const { data, isLoading, errorMessage, retry } = useApiRequest(
+    load,
+    "영화 목록을 불러오지 못했어요.",
+  );
 
   const bookmarkedMovieIds = useBookmarkStore(
     (state) => state.bookmarkedMovieIds,
@@ -23,27 +41,28 @@ export function MovieListPage() {
 
   const setSortOrder = useUiStore((state) => state.setSortOrder);
 
-  function handleToggleBookmark(movieId: number) {
-    toggleBookmark(movieId);
-  }
+  const movies = (data?.results ?? []).map((movie) =>
+    toMovieCard(movie, bookmarkedMovieIds.includes(movie.id)),
+  );
 
-  function handleChangePage(page: number) {
-    setCurrentPage(page);
-  }
+  const sortedMovies = [...movies].sort((a, b) => {
+    const difference =
+      (Date.parse(a.releaseDate) || 0) - (Date.parse(b.releaseDate) || 0);
 
-  const moviesWithBookmarks = movies.map((movie) => ({
-    ...movie,
-    isBookmarked: bookmarkedMovieIds.includes(movie.id),
-  }));
-
-  const sortedMovies = [...moviesWithBookmarks].sort((a, b) => {
-    const firstDate = new Date(a.releaseDate).getTime();
-    const secondDate = new Date(b.releaseDate).getTime();
-
-    return sortOrder === "latest"
-      ? secondDate - firstDate
-      : firstDate - secondDate;
+    return sortOrder === "latest" ? -difference : difference;
   });
+
+  const totalPages = Math.min(data?.total_pages ?? 0, TMDB_MAX_PAGE);
+
+  function handleChangePage(nextPage: number) {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === page) {
+      return;
+    }
+
+    void navigate({
+      search: { page: nextPage },
+    });
+  }
 
   return (
     <>
@@ -54,7 +73,9 @@ export function MovieListPage() {
           <select
             value={sortOrder}
             onChange={(event) =>
-              setSortOrder(event.target.value as "latest" | "oldest")
+              setSortOrder(
+                event.target.value === "oldest" ? "oldest" : "latest",
+              )
             }
             className="rounded-lg border border-[#dfe3e8] bg-white px-3 py-2 text-[14px]"
           >
@@ -63,12 +84,44 @@ export function MovieListPage() {
           </select>
         </div>
 
-        <MovieGrid
-          movies={sortedMovies}
-          onToggleBookmark={handleToggleBookmark}
-        />
+        {isLoading ? (
+          <p role="status" className="py-16 text-center text-[#6b7280]">
+            영화 목록을 불러오는 중이에요.
+          </p>
+        ) : errorMessage ? (
+          <RequestError message={errorMessage} onRetry={retry} />
+        ) : movies.length === 0 ? (
+          <div className="py-16 text-center">
+            <p>조건에 맞는 영화가 없어요.</p>
 
-        <Pagination currentPage={currentPage} onChangePage={handleChangePage} />
+            {page > 1 && (
+              <button
+                type="button"
+                onClick={() =>
+                  void navigate({
+                    search: { page: 1 },
+                  })
+                }
+                className="mt-3 text-[#2563eb]"
+              >
+                첫 페이지로 이동
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <MovieGrid
+              movies={sortedMovies}
+              onToggleBookmark={toggleBookmark}
+            />
+
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onChangePage={handleChangePage}
+            />
+          </>
+        )}
       </main>
 
       <footer className="mt-10 border-t border-[#e5e7eb] bg-white">

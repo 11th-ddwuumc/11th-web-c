@@ -7,22 +7,22 @@ interface MovieCardProps {
   onToggleBookmark: (movieId: number) => void;
 }
 
-export default function MovieCard({
-  movie,
-  onToggleBookmark,
-}: MovieCardProps) {
+export default function MovieCard({ movie, onToggleBookmark }: MovieCardProps) {
   return (
     <article className="min-w-0 w-full">
       <div className="relative w-full overflow-hidden rounded-[10px]">
-        <Link
-          to="/movies/$movieId"
-          params={{ movieId: String(movie.id) }}
-        >
-          <img
-            className="block w-full aspect-[2/3] object-cover"
-            src={movie.posterPath}
-            alt={`${movie.title} 포스터`}
-          />
+        <Link to="/movies/$movieId" params={{ movieId: String(movie.id) }}>
+          {movie.posterPath ? (
+            <img
+              className="block w-full aspect-[2/3] object-cover"
+              src={movie.posterPath}
+              alt={`${movie.title} 포스터`}
+            />
+          ) : (
+            <div className="flex aspect-[2/3] w-full items-center justify-center bg-[#e5e7eb] text-[14px] text-[#6b7280]">
+              이미지 없음
+            </div>
+          )}
         </Link>
 
         <button
@@ -33,9 +33,7 @@ export default function MovieCard({
               : "border-white/90 bg-transparent",
           )}
           type="button"
-          aria-label={
-            movie.isBookmarked ? "북마크 해제" : "북마크 추가"
-          }
+          aria-label={movie.isBookmarked ? "북마크 해제" : "북마크 추가"}
           aria-pressed={movie.isBookmarked}
           onClick={() => onToggleBookmark(movie.id)}
         >
@@ -52,18 +50,13 @@ export default function MovieCard({
       </div>
 
       <div className="pt-2">
-        <Link
-          to="/movies/$movieId"
-          params={{ movieId: String(movie.id) }}
-        >
+        <Link to="/movies/$movieId" params={{ movieId: String(movie.id) }}>
           <h2 className="m-0 mb-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-semibold">
             {movie.title}
           </h2>
         </Link>
 
-        <p className="m-0 text-[12px] text-[#8a8f98]">
-          {movie.releaseDate}
-        </p>
+        <p className="m-0 text-[12px] text-[#8a8f98]">{movie.releaseDate}</p>
       </div>
     </article>
   );
