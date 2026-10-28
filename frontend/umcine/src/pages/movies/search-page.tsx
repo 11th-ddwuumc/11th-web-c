@@ -1,8 +1,10 @@
 import {Link, useNavigate, useSearch} from "@tanstack/react-router";
-import {type SubmitEvent, useState} from "react";
-import {movies} from "../../data/movies";
+import {type SubmitEvent, useEffect, useState} from "react";
 import {cn} from "../../utils/cn.ts";
 import Footer from "../../components/movies/footer.tsx";
+import type {TmdbMovieListItem} from "../../api/movies/models.ts";
+import {searchMovies} from "../../api/movies/search-movies.ts";
+import {getTmdbPosterUrl} from "../../utils/movies/tmdb-image.ts";
 
 export function SearchPage() {
   const {query} = useSearch({from: "/search"});
@@ -150,12 +152,44 @@ function SearchForm({
  * 검색 결과 페이지
  */
 function SearchResultPage({query}: { query: string }) {
-  const normalizedQuery = query.toLowerCase();
+  const [movies, setMovies] = useState<TmdbMovieListItem[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const searchResults = movies.filter((movie) =>
-    movie.title.toLowerCase().includes(normalizedQuery) ||
-    movie.originalTitle.toLowerCase().includes(normalizedQuery)
-  );
+  useEffect(() => {
+    let ignore = false;
+    const normalizedQuery = query.trim();
+
+    setMovies([]);
+    setTotalResults(0);
+    setErrorMessage(null);
+
+    if (!normalizedQuery) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    searchMovies({query: normalizedQuery})
+      .then((response) => {
+        if (!ignore) {
+          setMovies(response.results);
+          setTotalResults(response.total_results);
+        }
+      })
+      .catch(() => {
+        if (!ignore) setErrorMessage("검색 결과를 불러오지 못했어요.");
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [query]);
 
   return (
     <main className="flex flex-col w-full px-20 py-6 min-h-[calc(100vh-80px)] bg-(--color-bg-page)">
@@ -185,71 +219,83 @@ function SearchResultPage({query}: { query: string }) {
           `{query}` 검색 결과
         </h2>
         <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-          영화 {searchResults.length}편 · 1페이지
+          영화 {totalResults}편 · 1페이지
         </span>
       </div>
 
       {/*results-list*/}
-      {searchResults.length > 0 ? (
-        <ul className="h-180 grid grid-rows-3 grid-cols-2 gap-x-10">
-          {searchResults.map((movie) => (
-            <li
-              key={movie.id}
-              className={cn(
-                "flex w-full h-60 py-5 gap-4.5",
-                "border-b border-(--color-border-default)"
-              )}
-            >
-              <img
-                src={movie.posterPath}
-                alt={`${movie.title} 포스터`}
-                className="w-31.5 h-47.5 rounded-[10px] shrink-0"
-              />
+      {isLoading ? (
+        <div role="status" className="py-5 px-1">
+          검색 결과를 불러오는 중이에요.
+        </div>
+      ) : errorMessage ? (
+        <div role="alert" className="py-5 px-1">
+          {errorMessage}
+        </div>
+      ) : movies.length > 0 ? (
+        <ul className="m-0 grid list-none grid-cols-2 gap-x-10 p-0">
+          {movies.map((movie) => {
+            const posterUrl = getTmdbPosterUrl(movie.poster_path);
+            return (
+              <li
+                key={movie.id}
+                className={cn(
+                  "flex w-full min-h-60 py-5 gap-4.5",
+                  "border-b border-(--color-border-default)"
+                )}
+              >
+                <img
+                  src={posterUrl}
+                  alt={`${movie.title} 포스터`}
+                  className="w-31.5 h-47.5 rounded-[10px] shrink-0"
+                />
 
-              <div className="w-full h-full flex flex-col gap-2">
-                <h3 className={cn("w-full m-0 font-bold text-[18px]",
-                  "text-(--color-text-primary) leading-[24.3px]"
-                )}>
-                  {movie.title}
-                </h3>
-                <div className="flex w-full gap-2">
+                <div className="w-full flex flex-col gap-2">
+                  <h3 className={cn("w-full m-0 font-bold text-[18px]",
+                    "text-(--color-text-primary) leading-[24.3px]"
+                  )}>
+                    {movie.title}
+                  </h3>
+                  <div className="flex w-full gap-2">
                   <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-                    {movie.originalTitle}
+                    {movie.original_title}
                   </span>
-                  <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-                    {movie.releaseDate}
+                    <span className="font-normal text-[12px] text-(--color-text-tertiary)">
+                    {movie.release_date}
                   </span>
-                </div>
-                <span className={cn(
-                  "block min-h-16.5",
-                  "font-normal text-[12.5px] text-(--color-text-secondary)",
-                  "leading-[20.25px]"
-                )}>
+                  </div>
+                  <span className={cn(
+                    "block min-h-16.5",
+                    "font-normal text-[12.5px] text-(--color-text-secondary)",
+                    "leading-[20.25px]"
+                  )}>
                   {movie.overview}
                 </span>
-                <Link
-                  className="flex gap-1 cursor-pointer text-(--color-action-primary)"
-                  to={"/movies/$movieId"}
-                  params={{movieId: String(movie.id)}}
-                >
+                  <Link
+                    className="flex gap-1 cursor-pointer text-(--color-action-primary)"
+                    to={"/movies/$movieId"}
+                    params={{movieId: String(movie.id)}}
+                  >
                   <span className="font-extrabold text-[12px]">
                     상세 보기
                   </span>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M8.86699 11.5165C8.73366 11.3832 8.66966 11.2221 8.67499 11.0332C8.68077 10.8443 8.75033 10.6832 8.88366 10.5499L10.767 8.66654H3.33366C3.14477 8.66654 2.98633 8.60254 2.85833 8.47454C2.73077 8.34698 2.66699 8.18876 2.66699 7.99987C2.66699 7.81098 2.73077 7.65254 2.85833 7.52454C2.98633 7.39698 3.14477 7.3332 3.33366 7.3332H10.767L8.86699 5.4332C8.73366 5.29987 8.66699 5.14143 8.66699 4.95787C8.66699 4.77476 8.73366 4.61654 8.86699 4.4832C9.00033 4.34987 9.15877 4.2832 9.34233 4.2832C9.52544 4.2832 9.68366 4.34987 9.81699 4.4832L12.867 7.5332C12.9337 7.59987 12.981 7.67209 13.009 7.74987C13.0365 7.82765 13.0503 7.91098 13.0503 7.99987C13.0503 8.08876 13.0365 8.17209 13.009 8.24987C12.981 8.32765 12.9337 8.39987 12.867 8.46654L9.80033 11.5332C9.6781 11.6554 9.52544 11.7165 9.34233 11.7165C9.15877 11.7165 9.00033 11.6499 8.86699 11.5165Z"
-                      fill="currentColor"/>
-                  </svg>
-                </Link>
-              </div>
-            </li>
-          ))}
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M8.86699 11.5165C8.73366 11.3832 8.66966 11.2221 8.67499 11.0332C8.68077 10.8443 8.75033 10.6832 8.88366 10.5499L10.767 8.66654H3.33366C3.14477 8.66654 2.98633 8.60254 2.85833 8.47454C2.73077 8.34698 2.66699 8.18876 2.66699 7.99987C2.66699 7.81098 2.73077 7.65254 2.85833 7.52454C2.98633 7.39698 3.14477 7.3332 3.33366 7.3332H10.767L8.86699 5.4332C8.73366 5.29987 8.66699 5.14143 8.66699 4.95787C8.66699 4.77476 8.73366 4.61654 8.86699 4.4832C9.00033 4.34987 9.15877 4.2832 9.34233 4.2832C9.52544 4.2832 9.68366 4.34987 9.81699 4.4832L12.867 7.5332C12.9337 7.59987 12.981 7.67209 13.009 7.74987C13.0365 7.82765 13.0503 7.91098 13.0503 7.99987C13.0503 8.08876 13.0365 8.17209 13.009 8.24987C12.981 8.32765 12.9337 8.39987 12.867 8.46654L9.80033 11.5332C9.6781 11.6554 9.52544 11.7165 9.34233 11.7165C9.15877 11.7165 9.00033 11.6499 8.86699 11.5165Z"
+                        fill="currentColor"/>
+                    </svg>
+                  </Link>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <div className="py-5 px-1">
           검색 결과가 없어요.
         </div>
       )}
+
       <div className="fixed bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
         <Footer/>
       </div>

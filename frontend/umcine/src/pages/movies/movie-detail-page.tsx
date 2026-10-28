@@ -1,24 +1,99 @@
 import {Link, useParams} from "@tanstack/react-router";
-import {movies} from "../../data/movies";
 import Footer from "../../components/movies/footer.tsx";
 import {cn} from "../../utils/cn.ts";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {BookmarkButton} from "../../components/bookmark-button.tsx";
+
+import type {TmdbMovieDetail} from "../../api/movies/models.ts";
+import {getTmdbBackdropUrl, getTmdbPosterUrl} from "../../utils/movies/tmdb-image.ts";
+import {getMovieDetail} from "../../api/movies/get-movie-detail.ts";
+import {getMovieDetailErrorMessage} from "../../utils/movies/get-movie-detail-error-message.ts";
 
 export function MovieDetailPage() {
   const {movieId} = useParams({from: "/movies/$movieId"});
-  const movie = movies.find((item) => item.id === Number(movieId));
+  const parsedMovieId = Number(movieId);
+
+  const [movie, setMovie] = useState<TmdbMovieDetail>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [rating, setRating] = useState(0);
 
-  if (!movie) {
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadMovieDetail() {
+      setMovie(undefined);
+      setErrorMessage(null);
+
+      if (!(Number.isInteger(parsedMovieId) && parsedMovieId > 0)) {
+        setErrorMessage("올바르지 않은 영화 번호예요.");
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const response = await getMovieDetail(parsedMovieId);
+
+        if (!ignore) {
+          setMovie(response);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setErrorMessage(getMovieDetailErrorMessage(error));
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadMovieDetail();
+
+    return () => {
+      ignore = true;
+    };
+  }, [parsedMovieId]);
+
+  const isValidMovieId =
+    Number.isInteger(parsedMovieId) && parsedMovieId > 0;
+
+  const isCurrentMovie = movie?.id === parsedMovieId;
+
+  const statusMessage = !isValidMovieId
+    ? "올바르지 않은 영화 번호예요."
+    : isLoading
+      ? "영화 정보를 불러오는 중이에요."
+      : errorMessage ??
+      (!isCurrentMovie ? "영화 정보를 불러오는 중이에요." : null);
+
+  if (statusMessage !== null || !movie) {
     return (
       <main className="flex min-h-[calc(100vh-90px)] items-center justify-center bg-(--color-bg-page)">
-        <p className="m-0 text-[28px] font-bold text-(--color-text-primary)">
-          영화를 찾을 수 없어요.
+        <p
+          role="status"
+          className="m-0 text-[28px] font-bold text-(--color-text-primary)"
+        >
+          {statusMessage ?? "영화 정보를 불러오는 중이에요."}
         </p>
       </main>
     );
   }
+
+  const genresText = movie.genres
+    .map((genre) => genre.name)
+    .join(", ");
+
+  const runtimeText =
+    typeof movie.runtime === "number"
+      ? `${Math.floor(movie.runtime / 60)}시간 ${movie.runtime % 60}분`
+      : "상영 시간 정보가 없어요.";
+
+  const posterUrl = getTmdbPosterUrl(movie.poster_path);
+  const backdropUrl = getTmdbBackdropUrl(movie.backdrop_path);
 
   return (
     <div className="flex min-h-[calc(100vh-90px)] w-full flex-col bg-(--color-bg-page) pb-59.5">
@@ -27,7 +102,7 @@ export function MovieDetailPage() {
       <section className="relative w-full h-90 overflow-hidden text-(--color-bg-surface)">
         {/* 배경 이미지 */}
         <img
-          src={movie.backdropPath}
+          src={backdropUrl}
           alt=""
           className="absolute inset-0 z-0 h-full w-full object-cover object-center"
         />
@@ -54,19 +129,19 @@ export function MovieDetailPage() {
           <div className="flex flex-col w-200 gap-2">
             {/* Title */}
             <h1 className="m-0 text-[46px] leading-[49.68px] font-bold tracking-[-0.023em]">
-              {movie.title}
+              {movie?.title}
             </h1>
 
             {/* Original title */}
             <div className="w-full text-[14px] font-normal">
-              {movie.originalTitle}
+              {movie?.original_title}
             </div>
 
             {/* detail-meta */}
             <div className="flex w-full gap-2 text-[13px] font-bold">
-              <span>{movie.releaseDate}</span>
-              <span>{movie.genres.join(" · ")}</span>
-              <span>{movie.runtime}</span>
+              <span>{movie?.release_date}</span>
+              <span>{genresText}</span>
+              <span>{runtimeText}</span>
             </div>
           </div>
         </div>
@@ -81,7 +156,7 @@ export function MovieDetailPage() {
           "shadow-[0px_12px_30px_0px_#0C0F141F]",
         )}>
           <img
-            src={movie.posterPath}
+            src={posterUrl}
             alt=""
             className="h-full w-full object-cover object-center"
           />
@@ -93,17 +168,17 @@ export function MovieDetailPage() {
             "m-0 w-full text-(--color-text-primary)",
             "text-[21px] font-bold tracking-[-0.63px] leading-[100%]"
           )}>
-            {movie.tagline}
+            {movie?.tagline}
           </h2>
           <p className={cn(
             "w-full m-0 text-(--color-text-secondary)",
             "text-[14px] font-normal leading-6"
           )}>
-            {movie.overview}
+            {movie?.overview}
           </p>
 
           {/* bookmark button */}
-          <BookmarkButton variant={"detail"} movieId={movie.id}/>
+          <BookmarkButton variant={"detail"} movieId={movie?.id}/>
         </section>
 
         {/* aside.rating-panel */}

@@ -1,13 +1,16 @@
 import {Link} from "@tanstack/react-router";
-import type {Movie} from "../../types/movie.ts";
 import {cn} from "../../utils/cn.ts";
 import {BookmarkButton} from "../bookmark-button.tsx";
+import type {TmdbMovieListItem} from "../../api/movies/models.ts";
+import {getTmdbPosterUrl} from "../../utils/movies/tmdb-image.ts";
 
 interface MovieCardProps {
-  movie: Movie;
+  movie: TmdbMovieListItem;
 }
 
 export function MovieCard({movie}: MovieCardProps) {
+  const posterUrl = getTmdbPosterUrl(movie.poster_path);
+
   return (
     <article className={cn("relative flex flex-col gap-1")}>
       <Link
@@ -22,15 +25,18 @@ export function MovieCard({movie}: MovieCardProps) {
         )}>
           <img
             className={cn("block h-full w-full object-cover")}
-            src={movie.posterPath}
+            src={posterUrl}
             alt={`${movie.title} 포스터`}
           />
         </div>
-        <div className={cn(
-          "h-5.5 pt-1.25",
-          "text-[14px] leading-[100%] font-extrabold align-middle",
-          "text-(--color-text-primary)",
-        )}>
+        <div
+          title={movie.title}
+          className={cn(
+            "h-5.5 pt-1.25 truncate",
+            "text-[14px] leading-[100%] font-extrabold align-middle",
+            "text-(--color-text-primary)",
+          )}
+        >
           {movie.title}
         </div>
         <div className={cn(
@@ -38,7 +44,7 @@ export function MovieCard({movie}: MovieCardProps) {
           "text-[12px] font-normal align-middle",
           "text-(--color-text-tertiary)",
         )}>
-          {movie.releaseDate}
+          {movie.release_date}
         </div>
       </Link>
       <BookmarkButton variant={"card"} movieId={movie.id}/>
