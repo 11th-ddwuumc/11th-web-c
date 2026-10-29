@@ -1,8 +1,12 @@
 import type { Movie } from '../types/movie'
 import { cn } from '../lib/cn'
 
+type MovieCardData = Pick<Movie, 'id' | 'title' | 'releaseDate' | 'isBookmarked'> & {
+  posterPath: string | null
+}
+
 interface MovieCardProps {
-  movie: Movie
+  movie: MovieCardData
   onToggleBookmark: (id: number) => void
 }
 
@@ -12,7 +16,13 @@ function MovieCard({ movie, onToggleBookmark }: MovieCardProps) {
   return (
     <article className="flex min-w-0 flex-col gap-1">
       <div className="relative h-[274px] overflow-hidden rounded-10 bg-bg-page">
-        <img src={posterPath} alt={`${title} 포스터`} className="size-full object-cover" />
+        {posterPath ? (
+          <img src={posterPath} alt={`${title} 포스터`} className="size-full object-cover" />
+        ) : (
+          <div className="flex size-full items-center justify-center bg-border-default text-[14px] text-text-tertiary">
+            이미지 없음
+          </div>
+        )}
         <button
           type="button"
           className={cn(
@@ -42,4 +52,5 @@ function MovieCard({ movie, onToggleBookmark }: MovieCardProps) {
   )
 }
 
+export type { MovieCardData }
 export default MovieCard

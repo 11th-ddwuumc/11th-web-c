@@ -1,20 +1,47 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useRef, type SubmitEvent } from "react";
-import { movies } from "../../data/movies";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { searchMovies } from "../../api/movies/search-movies";
+import type { TmdbMovieListItem } from "../../api/movies/models";
+import { getTmdbPosterUrl } from "../../utils/movies/tmdb-image";
 
 export function SearchPage() {
   const { query } = useSearch({ from: "/search" });
   const navigate = useNavigate({ from: "/search" });
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const normalizedQuery = query?.trim().toLowerCase() ?? "";
-  const searchResults = normalizedQuery
-    ? movies.filter(
-        (movie) =>
-          movie.title.toLowerCase().includes(normalizedQuery) ||
-          movie.originalTitle.toLowerCase().includes(normalizedQuery),
-      )
-    : [];
+  const [movies, setMovies] = useState<TmdbMovieListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+    const normalizedQuery = query?.trim() ?? "";
+
+    setMovies([]);
+    setErrorMessage(null);
+
+    if (!normalizedQuery) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    searchMovies({ query: normalizedQuery })
+      .then((response) => {
+        if (!ignore) setMovies(response.results);
+      })
+      .catch(() => {
+        if (!ignore) setErrorMessage("검색 결과를 불러오지 못했어요.");
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [query]);
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,7 +56,7 @@ export function SearchPage() {
     }
   }
 
-  if (!normalizedQuery) {
+  if (!query?.trim()) {
     return (
       <main className="flex flex-col items-center px-18 pt-52.25 pb-52.5">
         <div className="flex w-197.5 flex-col items-center gap-9">
@@ -95,44 +122,58 @@ export function SearchPage() {
 
       <div className="flex h-13.5 w-full items-center justify-between border-y border-border-default">
         <h2 className="text-[18px] font-bold text-text-primary">'{query}' 검색 결과</h2>
-        <span className="text-[12px] text-text-tertiary">영화 {searchResults.length}편</span>
+        <span className="text-[12px] text-text-tertiary">영화 {movies.length}편</span>
       </div>
 
-      {searchResults.length === 0 ? (
+      {isLoading ? (
+        <p className="w-full py-24 text-center text-text-secondary">검색 결과를 불러오는 중이에요.</p>
+      ) : errorMessage ? (
+        <p className="w-full py-24 text-center text-text-secondary">{errorMessage}</p>
+      ) : movies.length === 0 ? (
         <p className="w-full py-24 text-center text-text-secondary">검색 결과가 없어요.</p>
       ) : (
         <ul className="grid w-full grid-cols-2 gap-x-10">
-          {searchResults.map((movie) => (
-            <li key={movie.id} className="flex gap-4.5 border-b border-border-default py-5">
-              <div className="h-47.5 w-31.5 shrink-0 overflow-hidden rounded-10 bg-bg-page">
-                <img
-                  src={movie.posterPath}
-                  alt={`${movie.title} 포스터`}
-                  className="size-full object-cover"
-                />
-              </div>
-              <div className="flex flex-1 flex-col gap-2 py-1">
-                <h3 className="text-[18px] leading-[24.3px] font-bold text-text-primary">
-                  {movie.title}
-                </h3>
-                <div className="flex items-center gap-2 text-[12px] text-text-tertiary">
-                  <span>{movie.originalTitle}</span>
-                  <span>{movie.releaseDate}</span>
+          {movies.map((movie) => {
+            const posterUrl = getTmdbPosterUrl(movie.poster_path);
+
+            return (
+              <li key={movie.id} className="flex gap-4.5 border-b border-border-default py-5">
+                <div className="h-47.5 w-31.5 shrink-0 overflow-hidden rounded-10 bg-bg-page">
+                  {posterUrl ? (
+                    <img
+                      src={posterUrl}
+                      alt={`${movie.title} 포스터`}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center bg-border-default text-[14px] text-text-tertiary">
+                      이미지 없음
+                    </div>
+                  )}
                 </div>
-                <p className="line-clamp-2 text-[12.5px] leading-[20.25px] text-text-secondary">
-                  {movie.overview}
-                </p>
-                <Link
-                  to="/movies/$movieId"
-                  params={{ movieId: String(movie.id) }}
-                  className="flex items-center gap-1 text-[12px] font-extrabold text-action-primary"
-                >
-                  상세 보기
-                  <img src="/icons/arrow-right.svg" alt="" width={16} height={16} />
-                </Link>
-              </div>
-            </li>
-          ))}
+                <div className="flex flex-1 flex-col gap-2 py-1">
+                  <h3 className="text-[18px] leading-[24.3px] font-bold text-text-primary">
+                    {movie.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-[12px] text-text-tertiary">
+                    <span>{movie.original_title}</span>
+                    <span>{movie.release_date}</span>
+                  </div>
+                  <p className="line-clamp-2 text-[12.5px] leading-[20.25px] text-text-secondary">
+                    {movie.overview}
+                  </p>
+                  <Link
+                    to="/movies/$movieId"
+                    params={{ movieId: String(movie.id) }}
+                    className="flex items-center gap-1 text-[12px] font-extrabold text-action-primary"
+                  >
+                    상세 보기
+                    <img src="/icons/arrow-right.svg" alt="" width={16} height={16} />
+                  </Link>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>
