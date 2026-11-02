@@ -1,10 +1,10 @@
 import {Link, useNavigate, useSearch} from "@tanstack/react-router";
-import {type SubmitEvent, useEffect, useState} from "react";
+import {type SubmitEvent, useState} from "react";
 import {cn} from "../../utils/cn.ts";
 import Footer from "../../components/movies/footer.tsx";
-import type {TmdbMovieListItem} from "../../api/movies/models.ts";
 import {searchMovies} from "../../api/movies/search-movies.ts";
 import {getTmdbPosterUrl} from "../../utils/movies/tmdb-image.ts";
+import {useQuery} from "@tanstack/react-query";
 
 export function SearchPage() {
   const {query} = useSearch({from: "/search"});
@@ -152,47 +152,16 @@ function SearchForm({
  * 검색 결과 페이지
  */
 function SearchResultPage({query}: { query: string }) {
-  const [movies, setMovies] = useState<TmdbMovieListItem[]>([]);
-  const [totalResults, setTotalResults] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const searchQuery = useQuery({
+    queryKey: ["movies", "search", {query: query}],
+    queryFn: () => searchMovies({query: query}),
+    enabled: query.length > 0,
+  });
 
-  useEffect(() => {
-    let ignore = false;
-    const normalizedQuery = query.trim();
-
-    setMovies([]);
-    setTotalResults(0);
-    setErrorMessage(null);
-
-    if (!normalizedQuery) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-
-    searchMovies({query: normalizedQuery})
-      .then((response) => {
-        if (!ignore) {
-          setMovies(response.results);
-          setTotalResults(response.total_results);
-        }
-      })
-      .catch(() => {
-        if (!ignore) setErrorMessage("검색 결과를 불러오지 못했어요.");
-      })
-      .finally(() => {
-        if (!ignore) setIsLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [query]);
+  const searchResults = searchQuery.data?.results ?? [];
 
   return (
-    <main className="flex flex-col w-full px-20 py-6 min-h-[calc(100vh-80px)] bg-(--color-bg-page)">
+    <main className="flex flex-col w-full px-20 py-6 min-h-[calc(100vh-80px)] bg-(--color-bg-page) pb-12">
       {/*results-head*/}
       <div className="flex flex-col w-full gap-4.25">
         <h1 className={cn(
@@ -219,22 +188,22 @@ function SearchResultPage({query}: { query: string }) {
           `{query}` 검색 결과
         </h2>
         <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-          영화 {totalResults}편 · 1페이지
+          영화 {searchResults.length}편 · 1페이지
         </span>
       </div>
 
       {/*results-list*/}
-      {isLoading ? (
+      {searchQuery.isLoading ? (
         <div role="status" className="py-5 px-1">
           검색 결과를 불러오는 중이에요.
         </div>
-      ) : errorMessage ? (
+      ) : searchQuery.isError ? (
         <div role="alert" className="py-5 px-1">
-          {errorMessage}
+          {searchQuery.error.message}
         </div>
-      ) : movies.length > 0 ? (
+      ) : !(searchQuery.isSuccess && searchResults.length === 0) ? (
         <ul className="m-0 grid list-none grid-cols-2 gap-x-10 p-0">
-          {movies.map((movie) => {
+          {searchResults.map((movie) => {
             const posterUrl = getTmdbPosterUrl(movie.poster_path);
             return (
               <li
@@ -264,13 +233,15 @@ function SearchResultPage({query}: { query: string }) {
                     {movie.release_date}
                   </span>
                   </div>
-                  <span className={cn(
-                    "block min-h-16.5",
-                    "font-normal text-[12.5px] text-(--color-text-secondary)",
-                    "leading-[20.25px]"
-                  )}>
-                  {movie.overview}
-                </span>
+                  <div className="min-h-16.5">
+                    <span className={cn(
+                      "line-clamp-3",
+                      "font-normal text-[12.5px] text-(--color-text-secondary)",
+                      "leading-[20.25px]"
+                    )}>
+                      {movie.overview}
+                    </span>
+                  </div>
                   <Link
                     className="flex gap-1 cursor-pointer text-(--color-action-primary)"
                     to={"/movies/$movieId"}
@@ -295,7 +266,6 @@ function SearchResultPage({query}: { query: string }) {
           검색 결과가 없어요.
         </div>
       )}
-
       <div className="fixed bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
         <Footer/>
       </div>
