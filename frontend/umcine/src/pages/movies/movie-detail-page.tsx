@@ -71,19 +71,17 @@ export function MovieDetailPage() {
         {/* Frame 2 */}
         <div className={"relative z-10 flex h-full w-full flex-col justify-between px-20 py-6"}>
           {/* button.back-link */}
-          <Link to="/">
-            <button
-              type="button"
-              className="flex items-center w-fit h-fit gap-1 cursor-pointer"
-            >
-              <svg width="24" height="24" viewBox="32 128 24 24" fill="none">
-                <path d="M47.41 144.59L42.83 140L47.41 135.41L46 134L40 140L46 146L47.41 144.59Z"
-                      fill="currentColor"/>
-              </svg>
-              <span className="text-[13px] font-bold">
+          <Link
+            to="/"
+            className="flex items-center w-fit h-fit gap-1 cursor-pointer"
+          >
+            <svg width="24" height="24" viewBox="32 128 24 24" fill="none">
+              <path d="M47.41 144.59L42.83 140L47.41 135.41L46 134L40 140L46 146L47.41 144.59Z"
+                    fill="currentColor"/>
+            </svg>
+            <span className="text-[13px] font-bold">
                 영화 목록
               </span>
-            </button>
           </Link>
 
           {/* div.detail-copy */}
