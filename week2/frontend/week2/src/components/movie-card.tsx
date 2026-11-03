@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import type { Movie } from '../types/movie';
+import type { TmdbMovieListItem } from '../api/movies/models';
 import { useBookmarkStore } from '../store/useBookmarkStore';
 
+const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+
 interface MovieCardProps {
-  movie: Movie;
+  movie: TmdbMovieListItem;
 }
 
 export const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
@@ -12,17 +14,27 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   const isBookmarked = useBookmarkStore((state) => state.isBookmarked(movie.id));
   const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
 
+  const posterUrl = movie.poster_path
+    ? `${IMAGE_BASE_URL}${movie.poster_path}`
+    : null;
+
   return (
     <div
       className="flex flex-col group cursor-pointer"
       onClick={() => navigate({ to: '/movies/$movieId', params: { movieId: String(movie.id) } })}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-gray-200 shadow-sm">
-        <img
-          src={movie.posterPath}
-          alt={movie.title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+        {posterUrl ? (
+          <img
+            src={posterUrl}
+            alt={movie.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-sm text-gray-400">
+            이미지 없음
+          </div>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -44,8 +56,10 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
       </div>
       <div className="mt-2 flex flex-col">
         <h3 className="text-sm font-semibold text-gray-900 truncate">{movie.title}</h3>
-        <p className="text-xs text-gray-500 mt-0.5">{movie.releaseDate}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{movie.release_date}</p>
       </div>
     </div>
   );
 };
+
+export default MovieCard;

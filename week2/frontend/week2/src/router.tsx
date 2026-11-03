@@ -1,32 +1,20 @@
-/* eslint-disable react-refresh/only-export-components */
-import React, { useState } from 'react';
 import {
   createRootRoute,
   createRoute,
   createRouter,
   Outlet,
 } from '@tanstack/react-router';
-import { movies as initialMovies } from './data/movies';
-import type { Movie } from './types/movie';
+import { movies } from './data/movies';
 import HomePage from './components/HomePage';
 import SearchPage from './components/SearchPage';
 import MovieDetailPage from './components/MovieDetailPage';
 
-const rootRoute = createRootRoute({ component: () => <Outlet /> });
-
-const HomeRoute: React.FC = () => {
-  const [movieList, setMovieList] = useState<Movie[]>(initialMovies);
-  const toggleBookmark = (id: number) =>
-    setMovieList((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, isBookmarked: !m.isBookmarked } : m))
-    );
-  return <HomePage movieList={movieList} onToggleBookmark={toggleBookmark} />;
-};
+const rootRoute = createRootRoute({ component: Outlet });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: HomeRoute,
+  component: () => <HomePage movieList={movies} />,
 });
 
 const searchRoute = createRoute({

@@ -1,28 +1,90 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { HTTPError } from 'ky';
 import { Link, getRouteApi } from '@tanstack/react-router';
 import { Header } from './header';
-import { movies } from '../data/movies';
-import type { Movie } from '../types/movie';
+import { getMovieDetail } from '../api/movies/get-movie-detail';
+import type { GetMovieDetailResponse } from '../api/movies/get-movie-detail';
 import { useBookmarkStore } from '../store/useBookmarkStore';
 
 const routeApi = getRouteApi('/movies/$movieId');
 
-const NotFound: React.FC = () => (
+const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+
+type Result =
+  | { movieId: number; movie: GetMovieDetailResponse; error?: undefined }
+  | { movieId: number; error: 'not-found' | 'failed'; movie?: undefined };
+
+const formatRuntime = (runtime: number | null) => {
+  if (!runtime) return '';
+  const hours = Math.floor(runtime / 60);
+  const minutes = runtime % 60;
+  return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+};
+
+const Message: React.FC<{ text: string; isError?: boolean }> = ({
+  text,
+  isError,
+}) => (
   <div className="min-h-screen bg-[#141414] flex flex-col">
     <Header />
-    <div className="flex-1 flex items-center justify-center text-white">
-      영화를 찾을 수 없어요.
+    <div
+      className={`flex-1 flex items-center justify-center ${
+        isError ? 'text-red-400' : 'text-white'
+      }`}
+    >
+      {text}
     </div>
   </div>
 );
 
 export const MovieDetailPage: React.FC = () => {
   const { movieId } = routeApi.useParams();
-  const movie = movies.find((m) => m.id === Number(movieId));
-  return movie ? <MovieDetail key={movie.id} movie={movie} /> : <NotFound />;
+  const id = Number(movieId);
+  const isValidId = Number.isInteger(id) && id > 0;
+
+  const [result, setResult] = useState<Result | null>(null);
+
+  useEffect(() => {
+    if (!isValidId) return;
+
+    let ignore = false;
+
+    getMovieDetail(id)
+      .then((movie) => {
+        if (!ignore) setResult({ movieId: id, movie });
+      })
+      .catch((error) => {
+        if (ignore) return;
+        const isNotFound =
+          error instanceof HTTPError && error.response.status === 404;
+        setResult({ movieId: id, error: isNotFound ? 'not-found' : 'failed' });
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [id, isValidId]);
+
+  if (!isValidId) return <Message text="영화를 찾을 수 없어요." />;
+
+  // 결과가 없거나 다른 영화의 결과면 로딩 중
+  if (result === null || result.movieId !== id) {
+    return <Message text="불러오는 중..." />;
+  }
+
+  if (result.error === 'not-found') {
+    return <Message text="영화를 찾을 수 없어요." />;
+  }
+  if (result.error) {
+    return <Message text="영화 정보를 불러오지 못했어요." isError />;
+  }
+
+  return <MovieDetail key={result.movie.id} movie={result.movie} />;
 };
 
-const MovieDetail: React.FC<{ movie: Movie }> = ({ movie }) => {
+const MovieDetail: React.FC<{ movie: GetMovieDetailResponse }> = ({
+  movie,
+}) => {
   const isBookmarked = useBookmarkStore((state) => state.isBookmarked(movie.id));
   const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
 
@@ -34,16 +96,25 @@ const MovieDetail: React.FC<{ movie: Movie }> = ({ movie }) => {
     console.log('평점:', rating, '후기:', review);
   };
 
+  const backdropUrl = movie.backdrop_path
+    ? `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`
+    : null;
+  const posterUrl = movie.poster_path
+    ? `${IMAGE_BASE_URL}/w500${movie.poster_path}`
+    : null;
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
 
-      <div className="relative w-full h-[420px] overflow-hidden">
-        <img
-          src={movie.backdropPath}
-          alt={movie.title}
-          className="w-full h-full object-cover"
-        />
+      <div className="relative w-full h-[420px] overflow-hidden bg-gray-800">
+        {backdropUrl && (
+          <img
+            src={backdropUrl}
+            alt={movie.title}
+            className="w-full h-full object-cover"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
         <Link
@@ -56,26 +127,38 @@ const MovieDetail: React.FC<{ movie: Movie }> = ({ movie }) => {
 
         <div className="absolute bottom-8 left-8 text-white max-w-2xl">
           <h1 className="text-4xl font-extrabold mb-2">{movie.title}</h1>
-          <p className="text-gray-200 mb-1">{movie.originalTitle}</p>
+          <p className="text-gray-200 mb-1">{movie.original_title}</p>
           <p className="text-sm font-medium">
-            {movie.releaseDate} &nbsp;{movie.genres.join(' · ')} &nbsp;{movie.runtime}
+            {movie.release_date} &nbsp;
+            {movie.genres.map((genre) => genre.name).join(' · ')} &nbsp;
+            {formatRuntime(movie.runtime)}
           </p>
         </div>
       </div>
 
       <main className="max-w-6xl w-full mx-auto px-8 py-10 flex gap-12">
         <div className="w-56 shrink-0">
-          <img
-            src={movie.posterPath}
-            alt={movie.title}
-            className="w-full rounded-xl shadow-md object-cover aspect-[2/3]"
-          />
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={movie.title}
+              className="w-full rounded-xl shadow-md object-cover aspect-[2/3]"
+            />
+          ) : (
+            <div className="w-full aspect-[2/3] rounded-xl bg-gray-200 flex items-center justify-center text-sm text-gray-400">
+              이미지 없음
+            </div>
+          )}
         </div>
 
         <div className="flex-1">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">{movie.tagline}</h2>
+          {movie.tagline && (
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              {movie.tagline}
+            </h2>
+          )}
           <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-line">
-            {movie.overview}
+            {movie.overview || '등록된 줄거리가 없어요.'}
           </p>
 
           <button
