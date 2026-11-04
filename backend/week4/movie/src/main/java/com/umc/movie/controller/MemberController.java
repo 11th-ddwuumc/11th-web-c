@@ -1,31 +1,55 @@
+
 package com.umc.movie.controller;
 
+import com.umc.movie.dto.ApiResponse;
 import com.umc.movie.dto.EmailCheckResponse;
+import com.umc.movie.dto.MemberResponse;
 import com.umc.movie.dto.NicknameCheckResponse;
+import com.umc.movie.dto.SignUpRequest;
 import com.umc.movie.service.MemberService;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/members")
 public class MemberController {
+
     private final MemberService memberService;
+
+    // 5주차: 닉네임 중복 확인
     @GetMapping("/nickname/{nickname}")
     public NicknameCheckResponse checkNickname(
-            @PathVariable("nickname") @NotBlank @Size(min = 2, max = 12) String nickname) {
+            @PathVariable String nickname
+    ) {
         return memberService.checkNickname(nickname);
     }
+
+    // 5주차: 이메일 중복 확인
     @GetMapping("/email/{email}")
     public EmailCheckResponse checkEmail(
-            @PathVariable("email") @NotBlank @Email @Size(max = 254) String email) {
+            @PathVariable String email
+    ) {
         return memberService.checkEmail(email);
     }
-}
 
+    // 6주차: 회원가입
+    @PostMapping
+    public ResponseEntity<ApiResponse<MemberResponse>> signUp(
+            @Valid @RequestBody SignUpRequest request
+    ) {
+        MemberResponse response = memberService.signUp(request);
+
+        return ResponseEntity.status(201)
+                .body(
+                        ApiResponse.created(
+                                "회원가입에 성공했습니다.",
+                                response
+                        )
+                );
+    }
+}
