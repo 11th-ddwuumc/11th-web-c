@@ -1,7 +1,7 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRef, type SubmitEvent } from "react";
 import { searchMovies } from "../../api/movies/search-movies";
-import type { TmdbMovieListItem } from "../../api/movies/models";
 import { getTmdbPosterUrl } from "../../utils/movies/tmdb-image";
 
 export function SearchPage() {
@@ -9,39 +9,15 @@ export function SearchPage() {
   const navigate = useNavigate({ from: "/search" });
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [movies, setMovies] = useState<TmdbMovieListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const normalizedQuery = query?.trim() ?? "";
 
-  useEffect(() => {
-    let ignore = false;
-    const normalizedQuery = query?.trim() ?? "";
+  const searchQuery = useQuery({
+    queryKey: ["movies", "search", { query: normalizedQuery }],
+    queryFn: () => searchMovies({ query: normalizedQuery }),
+    enabled: normalizedQuery.length > 0,
+  });
 
-    setMovies([]);
-    setErrorMessage(null);
-
-    if (!normalizedQuery) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-
-    searchMovies({ query: normalizedQuery })
-      .then((response) => {
-        if (!ignore) setMovies(response.results);
-      })
-      .catch(() => {
-        if (!ignore) setErrorMessage("검색 결과를 불러오지 못했어요.");
-      })
-      .finally(() => {
-        if (!ignore) setIsLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [query]);
+  const movies = searchQuery.data?.results ?? [];
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,7 +32,7 @@ export function SearchPage() {
     }
   }
 
-  if (!query?.trim()) {
+  if (!normalizedQuery) {
     return (
       <main className="flex flex-col items-center px-18 pt-52.25 pb-52.5">
         <div className="flex w-197.5 flex-col items-center gap-9">
@@ -125,11 +101,11 @@ export function SearchPage() {
         <span className="text-[12px] text-text-tertiary">영화 {movies.length}편</span>
       </div>
 
-      {isLoading ? (
+      {searchQuery.isLoading ? (
         <p className="w-full py-24 text-center text-text-secondary">검색 결과를 불러오는 중이에요.</p>
-      ) : errorMessage ? (
-        <p className="w-full py-24 text-center text-text-secondary">{errorMessage}</p>
-      ) : movies.length === 0 ? (
+      ) : searchQuery.isError ? (
+        <p className="w-full py-24 text-center text-text-secondary">검색 결과를 불러오지 못했어요.</p>
+      ) : searchQuery.isSuccess && movies.length === 0 ? (
         <p className="w-full py-24 text-center text-text-secondary">검색 결과가 없어요.</p>
       ) : (
         <ul className="grid w-full grid-cols-2 gap-x-10">
