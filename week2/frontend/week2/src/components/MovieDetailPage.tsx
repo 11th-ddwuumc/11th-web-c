@@ -1,18 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { HTTPError } from 'ky';
 import { Link, getRouteApi } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { Header } from './header';
 import { getMovieDetail } from '../api/movies/get-movie-detail';
 import type { GetMovieDetailResponse } from '../api/movies/get-movie-detail';
 import { useBookmarkStore } from '../store/useBookmarkStore';
 
 const routeApi = getRouteApi('/movies/$movieId');
-
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
-type Result =
-  | { movieId: number; movie: GetMovieDetailResponse; error?: undefined }
-  | { movieId: number; error: 'not-found' | 'failed'; movie?: undefined };
 
 const formatRuntime = (runtime: number | null) => {
   if (!runtime) return '';
@@ -21,17 +17,10 @@ const formatRuntime = (runtime: number | null) => {
   return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
 };
 
-const Message: React.FC<{ text: string; isError?: boolean }> = ({
-  text,
-  isError,
-}) => (
+const Message: React.FC<{ text: string; isError?: boolean }> = ({ text, isError }) => (
   <div className="min-h-screen bg-[#141414] flex flex-col">
     <Header />
-    <div
-      className={`flex-1 flex items-center justify-center ${
-        isError ? 'text-red-400' : 'text-white'
-      }`}
-    >
+    <div className={`flex-1 flex items-center justify-center ${isError ? 'text-red-400' : 'text-white'}`}>
       {text}
     </div>
   </div>
@@ -42,49 +31,25 @@ export const MovieDetailPage: React.FC = () => {
   const id = Number(movieId);
   const isValidId = Number.isInteger(id) && id > 0;
 
-  const [result, setResult] = useState<Result | null>(null);
-
-  useEffect(() => {
-    if (!isValidId) return;
-
-    let ignore = false;
-
-    getMovieDetail(id)
-      .then((movie) => {
-        if (!ignore) setResult({ movieId: id, movie });
-      })
-      .catch((error) => {
-        if (ignore) return;
-        const isNotFound =
-          error instanceof HTTPError && error.response.status === 404;
-        setResult({ movieId: id, error: isNotFound ? 'not-found' : 'failed' });
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [id, isValidId]);
+  const { data: movie, isPending, isError, error } = useQuery({
+    queryKey: ['movies', 'detail', id],
+    queryFn: () => getMovieDetail(id),
+    enabled: isValidId,
+    staleTime: 1000 * 60 * 5,
+  });
 
   if (!isValidId) return <Message text="영화를 찾을 수 없어요." />;
-
-  // 결과가 없거나 다른 영화의 결과면 로딩 중
-  if (result === null || result.movieId !== id) {
-    return <Message text="불러오는 중..." />;
+  if (isPending) return <Message text="불러오는 중..." />;
+  
+  if (isError) {
+    const isNotFound = error instanceof HTTPError && error.response.status === 404;
+    return <Message text={isNotFound ? "영화를 찾을 수 없어요." : "영화 정보를 불러오지 못했어요."} isError />;
   }
 
-  if (result.error === 'not-found') {
-    return <Message text="영화를 찾을 수 없어요." />;
-  }
-  if (result.error) {
-    return <Message text="영화 정보를 불러오지 못했어요." isError />;
-  }
-
-  return <MovieDetail key={result.movie.id} movie={result.movie} />;
+  return <MovieDetail key={movie.id} movie={movie} />;
 };
 
-const MovieDetail: React.FC<{ movie: GetMovieDetailResponse }> = ({
-  movie,
-}) => {
+const MovieDetail: React.FC<{ movie: GetMovieDetailResponse }> = ({ movie }) => {
   const isBookmarked = useBookmarkStore((state) => state.isBookmarked(movie.id));
   const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
 
@@ -96,12 +61,8 @@ const MovieDetail: React.FC<{ movie: GetMovieDetailResponse }> = ({
     console.log('평점:', rating, '후기:', review);
   };
 
-  const backdropUrl = movie.backdrop_path
-    ? `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`
-    : null;
-  const posterUrl = movie.poster_path
-    ? `${IMAGE_BASE_URL}/w500${movie.poster_path}`
-    : null;
+  const backdropUrl = movie.backdrop_path ? `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : null;
+  const posterUrl = movie.poster_path ? `${IMAGE_BASE_URL}/w500${movie.poster_path}` : null;
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -109,11 +70,7 @@ const MovieDetail: React.FC<{ movie: GetMovieDetailResponse }> = ({
 
       <div className="relative w-full h-[420px] overflow-hidden bg-gray-800">
         {backdropUrl && (
-          <img
-            src={backdropUrl}
-            alt={movie.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={backdropUrl} alt={movie.title} className="w-full h-full object-cover" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
