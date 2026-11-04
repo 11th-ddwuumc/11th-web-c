@@ -1,17 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, getRouteApi } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { Header } from './header';
 import { searchMovies } from '../api/movies/search-movies';
-import type { SearchMoviesResponse } from '../api/movies/search-movies';
 import { useBookmarkStore } from '../store/useBookmarkStore';
 
 const routeApi = getRouteApi('/search');
-
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w342';
-
-type Result =
-  | { query: string; data: SearchMoviesResponse; error?: undefined }
-  | { query: string; error: string; data?: undefined };
 
 export const SearchPage: React.FC = () => {
   const { query } = routeApi.useSearch();
@@ -27,34 +22,15 @@ export const SearchPage: React.FC = () => {
 
   const bookmarkedIds = useBookmarkStore((state) => state.bookmarkedIds);
 
-  const [result, setResult] = useState<Result | null>(null);
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['movies', 'search', { query: trimmed }],
+    queryFn: () => searchMovies({ query: trimmed }),
+    enabled: !!trimmed,
+    staleTime: 1000 * 60 * 5,
+  });
 
-  useEffect(() => {
-    if (!trimmed) return;
-
-    let ignore = false;
-
-    searchMovies({ query: trimmed })
-      .then((data) => {
-        if (!ignore) setResult({ query: trimmed, data });
-      })
-      .catch(() => {
-        if (!ignore) {
-          setResult({ query: trimmed, error: '검색 결과를 불러오지 못했어요.' });
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [trimmed]);
-
-  // 현재 검색어에 해당하는 결과가 아직 없으면 로딩 중
-  const isCurrent = !!trimmed && result?.query === trimmed;
-  const isLoading = !!trimmed && !isCurrent;
-  const results = isCurrent ? (result?.data?.results ?? []) : [];
-  const totalResults = isCurrent ? (result?.data?.total_results ?? 0) : 0;
-  const errorMessage = isCurrent ? (result?.error ?? null) : null;
+  const results = data?.results ?? [];
+  const totalResults = data?.total_results ?? 0;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,17 +80,17 @@ export const SearchPage: React.FC = () => {
           <div className="mt-8">
             <div className="flex items-center justify-between border-b border-gray-700 pb-3 mb-6">
               <h2 className="text-white font-semibold">'{trimmed}' 검색 결과</h2>
-              {isCurrent && !errorMessage && (
+              {!isPending && !isError && (
                 <span className="text-gray-400 text-sm">
                   영화 {totalResults}편 · 1페이지
                 </span>
               )}
             </div>
 
-            {isLoading ? (
+            {isPending ? (
               <p className="text-gray-400 text-center py-16">검색 중...</p>
-            ) : errorMessage ? (
-              <p className="text-red-400 text-center py-16">{errorMessage}</p>
+            ) : isError ? (
+              <p className="text-red-400 text-center py-16">검색 결과를 불러오지 못했어요.</p>
             ) : results.length === 0 ? (
               <p className="text-gray-400 text-center py-16">검색 결과가 없어요.</p>
             ) : (
