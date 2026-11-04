@@ -1,10 +1,9 @@
 import { useParams } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { getMovieDetail } from "../../api/movies/get-movie-detail";
+import { movieDetailOptions } from "../../api/movies/movie-query-options";
 
 import RequestError from "../../components/request-error";
-import { useApiRequest } from "../../hooks/use-api-request";
 
 import { useBookmarkStore } from "../../stores/bookmark-store";
 
@@ -15,14 +14,23 @@ import {
 } from "../../utils/movies/tmdb-image";
 
 export function MovieDetailPage() {
-  const { movieId } = useParams({
+  const { movieId: movieIdParam } = useParams({
     from: "/movies/$movieId",
   });
 
-  const parsedMovieId = Number(movieId);
+  const movieId = Number(movieIdParam);
 
-  const isValidMovieId = Number.isInteger(parsedMovieId) && parsedMovieId > 0;
+  const isValidMovieId = Number.isInteger(movieId) && movieId > 0;
 
+  const movieDetailQuery = useQuery(movieDetailOptions(movieId));
+
+  const bookmarkedMovieIds = useBookmarkStore(
+    (state) => state.bookmarkedMovieIds,
+  );
+
+  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+
+  // 영화 ID가 유효하지 않은 경우
   if (!isValidMovieId) {
     return (
       <main className="mx-auto w-[calc(100%-80px)] max-w-[1200px] py-8">
@@ -31,30 +39,8 @@ export function MovieDetailPage() {
     );
   }
 
-  return <MovieDetailContent key={parsedMovieId} movieId={parsedMovieId} />;
-}
-
-interface MovieDetailContentProps {
-  movieId: number;
-}
-
-function MovieDetailContent({ movieId }: MovieDetailContentProps) {
-  const load = useCallback(() => getMovieDetail(movieId), [movieId]);
-
-  const {
-    data: movie,
-    isLoading,
-    errorMessage,
-    retry,
-  } = useApiRequest(load, getMovieDetailErrorMessage);
-
-  const bookmarkedMovieIds = useBookmarkStore(
-    (state) => state.bookmarkedMovieIds,
-  );
-
-  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
-
-  if (isLoading) {
+  // 최초 조회 중인 경우
+  if (movieDetailQuery.isPending) {
     return (
       <main className="mx-auto w-[calc(100%-80px)] max-w-[1200px] py-8">
         <p role="status" className="text-[#6b7280]">
@@ -64,14 +50,24 @@ function MovieDetailContent({ movieId }: MovieDetailContentProps) {
     );
   }
 
-  if (errorMessage) {
+  // API 요청이 실패한 경우
+  if (movieDetailQuery.isError) {
     return (
       <main className="mx-auto w-[calc(100%-80px)] max-w-[1200px] py-8">
-        <RequestError message={errorMessage} onRetry={retry} />
+        <RequestError
+          message={getMovieDetailErrorMessage(movieDetailQuery.error)}
+          onRetry={() => {
+            void movieDetailQuery.refetch();
+          }}
+        />
       </main>
     );
   }
 
+  // API 응답 데이터
+  const movie = movieDetailQuery.data;
+
+  // 영화 정보가 없는 경우
   if (!movie) {
     return (
       <main className="mx-auto w-[calc(100%-80px)] max-w-[1200px] py-8">

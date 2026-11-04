@@ -1,13 +1,11 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { getMovies } from "../../api/movies/get-movies";
+import { movieListOptions } from "../../api/movies/movie-query-options";
 
 import MovieGrid from "../../components/movies/movie-grid";
 import Pagination from "../../components/movies/pagination";
 import RequestError from "../../components/request-error";
-
-import { useApiRequest } from "../../hooks/use-api-request";
 
 import { useBookmarkStore } from "../../stores/bookmark-store";
 import { useUiStore } from "../../stores/ui-store";
@@ -18,18 +16,13 @@ import { toMovieCard } from "../../utils/movies/to-movie-card";
 export function MovieListPage() {
   const { page = 1 } = useSearch({ from: "/" });
 
-  return <MovieListContent key={page} page={page} />;
+  return <MovieListContent page={page} />;
 }
 
 function MovieListContent({ page }: { page: number }) {
   const navigate = useNavigate({ from: "/" });
 
-  const load = useCallback(() => getMovies({ page }), [page]);
-
-  const { data, isLoading, errorMessage, retry } = useApiRequest(
-    load,
-    "영화 목록을 불러오지 못했어요.",
-  );
+  const moviesQuery = useQuery(movieListOptions(page));
 
   const bookmarkedMovieIds = useBookmarkStore(
     (state) => state.bookmarkedMovieIds,
@@ -41,10 +34,14 @@ function MovieListContent({ page }: { page: number }) {
 
   const setSortOrder = useUiStore((state) => state.setSortOrder);
 
+  // API 응답 데이터
+  const data = moviesQuery.data;
+
   const movies = (data?.results ?? []).map((movie) =>
     toMovieCard(movie, bookmarkedMovieIds.includes(movie.id)),
   );
 
+  // 기존 영화 정렬 기능 유지
   const sortedMovies = [...movies].sort((a, b) => {
     const difference =
       (Date.parse(a.releaseDate) || 0) - (Date.parse(b.releaseDate) || 0);
@@ -54,6 +51,7 @@ function MovieListContent({ page }: { page: number }) {
 
   const totalPages = Math.min(data?.total_pages ?? 0, TMDB_MAX_PAGE);
 
+  // 기존 페이지네이션 기능 유지
   function handleChangePage(nextPage: number) {
     if (nextPage < 1 || nextPage > totalPages || nextPage === page) {
       return;
@@ -84,12 +82,22 @@ function MovieListContent({ page }: { page: number }) {
           </select>
         </div>
 
-        {isLoading ? (
+        {/* TanStack Query 요청 상태 처리 */}
+        {moviesQuery.isPending ? (
           <p role="status" className="py-16 text-center text-[#6b7280]">
             영화 목록을 불러오는 중이에요.
           </p>
-        ) : errorMessage ? (
-          <RequestError message={errorMessage} onRetry={retry} />
+        ) : moviesQuery.isError ? (
+          <RequestError
+            message={
+              moviesQuery.error instanceof Error
+                ? moviesQuery.error.message
+                : "영화 목록을 불러오지 못했어요."
+            }
+            onRetry={() => {
+              void moviesQuery.refetch();
+            }}
+          />
         ) : movies.length === 0 ? (
           <div className="py-16 text-center">
             <p>조건에 맞는 영화가 없어요.</p>

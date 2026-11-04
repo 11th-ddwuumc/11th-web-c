@@ -1,12 +1,12 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
-import { searchMovies } from "../../api/movies/search-movies";
+import { movieSearchOptions } from "../../api/movies/movie-query-options";
 
 import Pagination from "../../components/movies/pagination";
 import RequestError from "../../components/request-error";
 
-import { useApiRequest } from "../../hooks/use-api-request";
 import { useBookmarkStore } from "../../stores/bookmark-store";
 
 import { TMDB_MAX_PAGE } from "../../utils/movies/parse-page";
@@ -15,13 +15,7 @@ import { toMovieCard } from "../../utils/movies/to-movie-card";
 export function SearchPage() {
   const { query = "", page = 1 } = useSearch({ from: "/search" });
 
-  return (
-    <SearchPageContent
-      key={JSON.stringify([query, page])}
-      query={query}
-      page={page}
-    />
-  );
+  return <SearchPageContent key={query} query={query} page={page} />;
 }
 
 function SearchPageContent({ query, page }: { query: string; page: number }) {
@@ -29,34 +23,19 @@ function SearchPageContent({ query, page }: { query: string; page: number }) {
 
   const normalizedQuery = query.trim();
 
+  // 검색창 입력 상태 관리
   const [searchText, setSearchText] = useState(query);
 
-  const load = useCallback(
-    () =>
-      normalizedQuery
-        ? searchMovies({
-            query: normalizedQuery,
-            page,
-          })
-        : Promise.resolve({
-            page: 1,
-            results: [],
-            total_pages: 0,
-            total_results: 0,
-          }),
-    [normalizedQuery, page],
-  );
-
-  const { data, isLoading, errorMessage, retry } = useApiRequest(
-    load,
-    "검색 결과를 불러오지 못했어요.",
-  );
+  const searchQuery = useQuery(movieSearchOptions(normalizedQuery, page));
 
   const bookmarkedMovieIds = useBookmarkStore(
     (state) => state.bookmarkedMovieIds,
   );
 
   const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+
+  // API 응답 데이터
+  const data = searchQuery.data;
 
   const movies = (data?.results ?? []).map((movie) =>
     toMovieCard(movie, bookmarkedMovieIds.includes(movie.id)),
@@ -66,6 +45,7 @@ function SearchPageContent({ query, page }: { query: string; page: number }) {
 
   const totalPages = Math.min(data?.total_pages ?? 0, TMDB_MAX_PAGE);
 
+  // 검색 버튼 클릭 시 URL 변경
   function handleSubmit() {
     const nextQuery = searchText.trim();
 
@@ -77,6 +57,7 @@ function SearchPageContent({ query, page }: { query: string; page: number }) {
     });
   }
 
+  // 검색 결과 페이지 변경
   function handleChangePage(nextPage: number) {
     if (nextPage < 1 || nextPage > totalPages || nextPage === page) {
       return;
@@ -119,13 +100,22 @@ function SearchPageContent({ query, page }: { query: string; page: number }) {
 
       {!normalizedQuery ? (
         <p className="text-[14px] text-[#6b7280]">검색어를 입력해 주세요.</p>
-      ) : isLoading ? (
+      ) : searchQuery.isLoading ? (
         <p role="status" className="text-[14px] text-[#6b7280]">
           검색 결과를 불러오는 중이에요.
         </p>
-      ) : errorMessage ? (
-        <RequestError message={errorMessage} onRetry={retry} />
-      ) : (
+      ) : searchQuery.isError ? (
+        <RequestError
+          message={
+            searchQuery.error instanceof Error
+              ? searchQuery.error.message
+              : "검색 결과를 불러오지 못했어요."
+          }
+          onRetry={() => {
+            void searchQuery.refetch();
+          }}
+        />
+      ) : searchQuery.isSuccess ? (
         <>
           <div className="mb-6 text-left">
             <h2 className="m-0 text-[24px] font-bold">
@@ -231,7 +221,7 @@ function SearchPageContent({ query, page }: { query: string; page: number }) {
             </>
           )}
         </>
-      )}
+      ) : null}
     </main>
   );
 }
