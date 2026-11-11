@@ -1,0 +1,36 @@
+import { useState, type ComponentProps } from "react";
+import { Link } from "@tanstack/react-router";
+import { EMAIL_REGEX } from "../../utils/auth-validation";
+import "../../styles/auth.css";
+
+export function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const emailValid = EMAIL_REGEX.test(email.trim());
+  const canSubmit = emailValid && password.length > 0;
+  const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = event => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setMessage("입력 확인이 완료됐어요. 실제 로그인 API는 8주차에 연결해요.");
+  };
+
+  return (
+    <main className="w7-page"><section className="w7-card">
+      <h1>로그인</h1>
+      <p>7주차 화면 실습 — 실제 인증 요청은 아직 보내지 않아요.</p>
+      <form onSubmit={handleSubmit} noValidate>
+        <label htmlFor="login-email">이메일</label>
+        <input id="login-email" type="email" autoComplete="username" value={email}
+          onChange={e => { setEmail(e.target.value); setMessage(""); }} />
+        <p className="w7-error">{email.length > 0 && !emailValid ? "올바른 이메일을 입력해 주세요." : ""}</p>
+        <label htmlFor="login-password">비밀번호</label>
+        <input id="login-password" type="password" autoComplete="current-password" value={password}
+          onChange={e => { setPassword(e.target.value); setMessage(""); }} />
+        <button type="submit" className="w7-primary" disabled={!canSubmit}>로그인</button>
+        <p role="status">{message}</p>
+      </form>
+      <nav className="w7-links"><Link to="/signup">회원가입</Link><Link to="/mypage">내 정보 화면 확인</Link></nav>
+    </section></main>
+  );
+}

@@ -1,0 +1,25 @@
+/* 기존 영화 화면에 영향을 줄이지 않도록 w7 클래스 아래에서만 적용합니다. */
+.w7-page { min-height: 80vh; padding: 48px 16px; display: grid; place-items: start center; background: #11131a; color: #f4f4f5; }
+.w7-card { box-sizing: border-box; width: min(100%, 460px); padding: 28px; border: 1px solid #343744; border-radius: 18px; background: #1c1f2b; font-family: sans-serif; }
+.w7-card h1 { margin: 0 0 16px; font-size: 28px; }
+.w7-card p { line-height: 1.6; overflow-wrap: anywhere; }
+.w7-card label { display: block; margin: 18px 0 8px; font-weight: 600; }
+.w7-card input { box-sizing: border-box; min-width: 0; width: 100%; padding: 12px; border: 1px solid #555969; border-radius: 8px; background: #10121a; color: #fff; font: inherit; }
+.w7-card input:focus-visible, .w7-card button:focus-visible, .w7-card a:focus-visible { outline: 2px solid #bfafff; outline-offset: 3px; }
+.w7-card input[readonly] { color: #bbb; }
+.w7-card button { cursor: pointer; padding: 11px 14px; border: 0; border-radius: 8px; background: #454159; color: #fff; font: inherit; }
+.w7-card button:disabled { opacity: .45; cursor: not-allowed; }
+.w7-card input:disabled { opacity: .6; }
+.w7-card fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.w7-row { display: flex; gap: 8px; }
+.w7-row button { flex-shrink: 0; }
+.w7-card .w7-primary { width: 100%; margin-top: 18px; background: #7054db; font-weight: bold; }
+.w7-error, .w7-success, .w7-help { min-height: 20px; margin: 6px 0; font-size: 13px; }
+.w7-error { color: #ffafaf; }
+.w7-success { color: #8be7bc; }
+.w7-help { color: #c6c7d1; }
+.w7-card a { color: #c6baff; }
+.w7-links { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 24px; }
+.w7-profile { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 20px 12px; margin: 28px 0; }
+.w7-profile dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 380px) { .w7-card { padding: 20px 16px; } .w7-row button { padding: 10px; } }
