@@ -77,18 +77,18 @@ export default function Header() {
           </svg>
         </Link>
 
-        <button
+        <Link
           className={cn(
-            "h-10.5 w-17.75 px-4 py-0",
+            "flex justify-center items-center h-10.5 w-17.75 px-4 py-0",
             "rounded-lg border border-(--color-bg-surface)",
             "bg-(--color-action-primary)",
             "text-center text-[14px] font-extrabold align-middle",
             "cursor-pointer text-(--color-bg-surface)",
           )}
-          type="button"
+          to="/login"
         >
           로그인
-        </button>
+        </Link>
       </div>
     </header>
   );

@@ -29,4 +29,6 @@ body {
 
   --color-action-primary: #2563EB;
   --color-action-disabled: #D9E5FF;
+
+  --color-danger-default: #D92D20;
 }

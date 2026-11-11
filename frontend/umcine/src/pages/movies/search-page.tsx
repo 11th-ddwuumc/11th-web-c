@@ -188,7 +188,7 @@ function SearchResultPage({query}: { query: string }) {
           `{query}` 검색 결과
         </h2>
         <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-          {searchQuery.data && `영화 {searchQuery.data?.total_results}편 · 1페이지`}
+          {searchQuery.data && `영화 ${searchQuery.data.total_results}편 · 1페이지`}
         </span>
       </div>
 
