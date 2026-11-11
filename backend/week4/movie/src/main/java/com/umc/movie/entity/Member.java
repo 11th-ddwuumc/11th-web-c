@@ -1,4 +1,3 @@
-
 package com.umc.movie.entity;
 
 import jakarta.persistence.*;
@@ -23,20 +22,31 @@ import lombok.NoArgsConstructor;
                 )
         }
 )
-public class Member extends BaseTimeEntity{
+public class Member extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "member_id")
     private Long memberId;
 
-    @Column(nullable = false, unique = true)
+    @Column(
+            nullable = false,
+            unique = true,
+            length = 254
+    )
     private String email;
 
-    @Column(nullable = false, length = 60)
+    @Column(
+            nullable = false,
+            length = 60
+    )
     private String password;
 
-    @Column(nullable = false, unique = true, length = 12)
+    @Column(
+            nullable = false,
+            unique = true,
+            length = 50
+    )
     private String nickname;
 
     @Builder
@@ -47,6 +57,11 @@ public class Member extends BaseTimeEntity{
     ) {
         this.email = email;
         this.password = password;
+        this.nickname = nickname;
+    }
+
+    // 7주차: 내 정보 수정에서 사용
+    public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
 }

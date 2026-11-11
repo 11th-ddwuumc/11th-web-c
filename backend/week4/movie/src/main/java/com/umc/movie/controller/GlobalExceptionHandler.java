@@ -1,7 +1,7 @@
-
 package com.umc.movie.controller;
 
 import com.umc.movie.dto.ApiResponse;
+import com.umc.movie.exception.ApiException;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +13,21 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // DTO 검증 실패: 400
+    // 7주차: 직접 정의한 API 예외
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ApiResponse<Void>> handleApiException(
+            ApiException exception
+    ) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(
+                        ApiResponse.failure(
+                                exception.getCode(),
+                                exception.getMessage()
+                        )
+                );
+    }
+
+    // Bean Validation 실패
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(
             MethodArgumentNotValidException exception
@@ -34,7 +48,7 @@ public class GlobalExceptionHandler {
                 );
     }
 
-    // DB 무결성 제약 위반: 409
+    // DB 제약 조건 위반
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(
             DataIntegrityViolationException exception
@@ -48,7 +62,7 @@ public class GlobalExceptionHandler {
                 );
     }
 
-    // 중복 회원 또는 평점: 409
+    // 기존 일반 중복 처리
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(
             IllegalArgumentException exception
@@ -62,7 +76,7 @@ public class GlobalExceptionHandler {
                 );
     }
 
-    // 403, 404 등의 HTTP 오류
+    // 기존 HTTP 상태 예외
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(
             ResponseStatusException exception
@@ -73,9 +87,7 @@ public class GlobalExceptionHandler {
                 .body(
                         ApiResponse.failure(
                                 "COMMON" + status,
-                                exception.getReason() != null
-                                        ? exception.getReason()
-                                        : "요청을 처리할 수 없습니다."
+                                exception.getReason()
                         )
                 );
     }

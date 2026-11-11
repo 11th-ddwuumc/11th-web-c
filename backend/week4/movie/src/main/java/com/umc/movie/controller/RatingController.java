@@ -1,6 +1,6 @@
-
 package com.umc.movie.controller;
 
+import com.umc.movie.annotation.LoginMember;
 import com.umc.movie.dto.ApiResponse;
 import com.umc.movie.dto.CreateRatingRequest;
 import com.umc.movie.dto.RatingResponse;
@@ -17,68 +17,79 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/members")
 public class RatingController {
 
     private final RatingService ratingService;
 
-    // 5주차: 회원별 평점 조회
-    @GetMapping("/{memberId}/ratings")
+    // 5주차: 특정 회원이 작성한 평점 목록 조회
+    // 공개 API이므로 로그인 토큰 없이 접근 가능
+    @GetMapping("/members/{memberId}/ratings")
     public List<RatingResponse> getMemberRatings(
             @PathVariable Long memberId
     ) {
         return ratingService.getRatingsByMember(memberId);
     }
 
-    // 6주차: 평점 등록
-    @PostMapping("/{memberId}/ratings")
-    public ResponseEntity<ApiResponse<Long>> create(
-            @PathVariable Long memberId,
-            @Valid @RequestBody CreateRatingRequest request
+    // 7주차: 로그인한 회원의 평점 등록
+    @PostMapping("/ratings")
+    public ResponseEntity<ApiResponse<RatingResponse>> create(
+            @LoginMember Long memberId,
+            @RequestBody @Valid CreateRatingRequest request
     ) {
-        Long ratingId = ratingService.create(
-                memberId,
-                request
-        );
+        RatingResponse response =
+                ratingService.create(
+                        memberId,
+                        request
+                );
 
-        return ResponseEntity.status(201)
+        return ResponseEntity
+                .status(201)
                 .body(
                         ApiResponse.created(
-                                "평점 등록에 성공했습니다.",
-                                ratingId
+                                "평점을 등록했습니다.",
+                                response
                         )
                 );
     }
 
-    // 6주차: 평점 수정
-    @PatchMapping("/{memberId}/ratings/{ratingId}")
-    public ResponseEntity<ApiResponse<Void>> update(
-            @PathVariable Long memberId,
+    // 7주차: 로그인한 회원의 평점 수정
+    @PatchMapping("/ratings/{ratingId}")
+    public ResponseEntity<ApiResponse<RatingResponse>> update(
+            @LoginMember Long memberId,
             @PathVariable Long ratingId,
-            @Valid @RequestBody UpdateRatingRequest request
+            @RequestBody @Valid UpdateRatingRequest request
     ) {
-        ratingService.update(
-                ratingId,
-                memberId,
-                request
-        );
+        RatingResponse response =
+                ratingService.update(
+                        memberId,
+                        ratingId,
+                        request
+                );
 
         return ResponseEntity.ok(
                 ApiResponse.ok(
-                        "평점 수정에 성공했습니다.",
-                        null
+                        "평점을 수정했습니다.",
+                        response
                 )
         );
     }
 
-    // 6주차: 평점 삭제
-    @DeleteMapping("/{memberId}/ratings/{ratingId}")
-    public ResponseEntity<Void> delete(
-            @PathVariable Long memberId,
+    // 7주차: 로그인한 회원의 평점 삭제
+    @DeleteMapping("/ratings/{ratingId}")
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @LoginMember Long memberId,
             @PathVariable Long ratingId
     ) {
-        ratingService.delete(ratingId, memberId);
+        ratingService.delete(
+                memberId,
+                ratingId
+        );
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        "평점을 삭제했습니다.",
+                        null
+                )
+        );
     }
 }
