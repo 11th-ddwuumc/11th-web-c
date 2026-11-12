@@ -27,7 +27,9 @@ export function Header() {
           <Link to="/search" className={menuLinkClass} activeProps={{ className: menuLinkActiveClass }}>
             검색
           </Link>
-          <span className={menuLinkClass}>내 정보</span>
+          <Link to="/my" className={menuLinkClass} activeProps={{ className: menuLinkActiveClass }}>
+            내 정보
+          </Link>
         </nav>
       </div>
       <div className="flex items-center gap-2.5">
@@ -38,12 +40,12 @@ export function Header() {
         >
           <img src="/icons/search.svg" alt="" width={24} height={24} />
         </Link>
-        <button
-          type="button"
+        <Link
+          to="/login"
           className="flex h-10.5 items-center justify-center rounded-8 border border-bg-surface bg-action-primary px-4 text-[14px] font-extrabold text-bg-surface"
         >
           로그인
-        </button>
+        </Link>
       </div>
     </header>
   );
