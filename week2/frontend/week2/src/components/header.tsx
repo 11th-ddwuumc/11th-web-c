@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
 interface HeaderProps {
   searchQuery?: string;
@@ -24,8 +24,8 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery = '', onSearch }) =>
         </Link>
         <nav className="flex items-center space-x-6 text-sm font-medium text-gray-700">
           <Link to="/" className="cursor-pointer hover:text-black">영화</Link>
-          <Link to="/search" className="cursor-pointer hover:text-black">검색</Link>
-          <span className="cursor-pointer hover:text-black">내 정보</span>
+          <Link to="/search" search={{ query: '' }} className="cursor-pointer hover:text-black">검색</Link>
+          <Link to="/mypage" className="cursor-pointer hover:text-black">내 정보</Link>
         </nav>
       </div>
       <div className="flex items-center space-x-4">
@@ -44,9 +44,12 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery = '', onSearch }) =>
             placeholder="영화 검색..."
           />
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-md transition-colors">
+        <Link
+          to="/login"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-md transition-colors"
+        >
           로그인
-        </button>
+        </Link>
       </div>
     </header>
   );

@@ -8,6 +8,9 @@ import { movies } from './data/movies';
 import HomePage from './components/HomePage';
 import SearchPage from './components/SearchPage';
 import MovieDetailPage from './components/MovieDetailPage';
+import MyPage from './routes/mypage';
+import { LoginPage } from './routes/loginPage';
+import { SignupPage } from './pages/auth/signup-page';
 
 const rootRoute = createRootRoute({ component: Outlet });
 
@@ -32,7 +35,32 @@ const movieDetailRoute = createRoute({
   component: MovieDetailPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, searchRoute, movieDetailRoute]);
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+});
+
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
+  component: SignupPage,
+});
+
+const myPageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mypage',
+  component: MyPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  searchRoute,
+  movieDetailRoute,
+  loginRoute,
+  signupRoute,
+  myPageRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

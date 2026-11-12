@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-  };
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  console.log('submit');
+  navigate({ to: '/mypage' });
+};
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center px-4">
@@ -88,9 +92,9 @@ export const LoginPage: React.FC = () => {
 
         <div className="mt-6 text-center text-xs text-gray-500">
           처음이신가요?{' '}
-          <a href="#" className="text-blue-600 font-semibold hover:underline">
+          <Link to="/signup" className="text-blue-600 font-semibold hover:underline">
             회원가입
-          </a>
+          </Link>
         </div>
       </div>
     </div>
