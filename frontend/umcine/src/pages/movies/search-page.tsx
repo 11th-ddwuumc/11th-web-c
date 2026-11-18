@@ -1,17 +1,17 @@
-import {Link, useNavigate, useSearch} from "@tanstack/react-router";
-import {type SubmitEvent, useState} from "react";
-import {cn} from "../../utils/cn.ts";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { type SubmitEvent, useState } from "react";
+import { cn } from "../../utils/cn.ts";
 import Footer from "../../components/movies/footer.tsx";
-import {searchMovies} from "../../api/movies/search-movies.ts";
-import {getTmdbPosterUrl} from "../../utils/movies/tmdb-image.ts";
-import {useQuery} from "@tanstack/react-query";
+import { searchMovies } from "../../api/movies/search-movies.ts";
+import { getTmdbPosterUrl } from "../../utils/movies/tmdb-image.ts";
+import { useQuery } from "@tanstack/react-query";
 
 export function SearchPage() {
-  const {query} = useSearch({from: "/search"});
+  const { query } = useSearch({ from: "/search" });
   const normalizedQuery = query?.trim() ?? "";
 
   return normalizedQuery ? (
-    <SearchResultPage query={normalizedQuery}/>
+    <SearchResultPage query={ normalizedQuery }/>
   ) : (
     <SearchLandingPage/>
   );
@@ -22,17 +22,17 @@ export function SearchPage() {
  */
 function SearchLandingPage() {
   return (
-    <section className={cn(
+    <section className={ cn(
       "w-full flex flex-col align-middle",
       "min-h-[calc(100vh-80px)] items-center",
       "pt-52.25 pr-18 pl-18 pb-52.5",
-      "bg-(--color-bg-page)"
-    )}>
+      "bg-(--color-bg-page)",
+    ) }>
       <div className="w-197.5 flex flex-col items-center gap-9">
-        <h1 className={cn(
+        <h1 className={ cn(
           "font-bold text-[46px] text-(--color-text-primary)",
-          "leading-[52.44px] tracking-[-2.3px] m-0"
-        )}>
+          "leading-[52.44px] tracking-[-2.3px] m-0",
+        ) }>
           어떤 영화를 찾고 있나요?
         </h1>
         <SearchForm variant="landing"/>
@@ -51,17 +51,17 @@ type SearchFormProps = {
  */
 function SearchForm({
                       variant,
-                      initialValue = ""
+                      initialValue = "",
                     }: SearchFormProps) {
-  const navigate = useNavigate({from: "/search"});
-  const [searchText, setSearchText] = useState(initialValue);
+  const navigate = useNavigate({ from: "/search" });
+  const [ searchText, setSearchText ] = useState(initialValue);
   const isLanding = variant === "landing";
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextQuery = searchText.trim();
     navigate({
-      search: nextQuery ? {query: nextQuery} : {},
+      search: nextQuery ? { query: nextQuery } : {},
     });
   }
 
@@ -74,13 +74,13 @@ function SearchForm({
 
   return (
     <form
-      className={cn(
+      className={ cn(
         "flex w-full bg-(--color-bg-surface) items-center",
         isLanding ?
           "h-18.5 gap-3.5 pr-4.25 pl-5.25 rounded-xl border-2 border-(--color-text-primary) shadow-[0px_12px_34px_0px_#11131814]"
           : "h-13.5 gap-4.5 pr-2.5 pl-3.75 rounded-[9px] border border-(--color-border-default)",
-      )}
-      onSubmit={handleSubmit}
+      ) }
+      onSubmit={ handleSubmit }
     >
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <g clipPath="url(#clip0_98_684)">
@@ -96,28 +96,28 @@ function SearchForm({
       </svg>
 
       <input
-        className={isLanding ?
+        className={ isLanding ?
           cn(
             "flex flex-col w-full px-0.5 py-px",
             "text-[17px] font-normal leading-[100%] tracking-[0%]",
-            "placeholder:text-(--color-text-tertiary)"
+            "placeholder:text-(--color-text-tertiary) focus:outline-none",
           ) :
           cn(
             "flex flex-col w-full px-0.5 py-px",
-            "text-[14px] font-bold leading-[100%] tracking-[0%]",
+            "text-[14px] font-bold leading-[100%] tracking-[0%] focus:outline-none",
           )
         }
         aria-label="검색어"
-        value={searchText}
+        value={ searchText }
         placeholder="예: 스파이더맨"
-        onChange={(event) => setSearchText(event.target.value)}
+        onChange={ (event) => setSearchText(event.target.value) }
       />
 
-      {!isLanding && searchText && (
+      { !isLanding && searchText && (
         <button
           type="button"
           aria-label="검색어 지우기"
-          onClick={handleReset}
+          onClick={ handleReset }
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g clipPath="url(#clip0_98_742)">
@@ -132,17 +132,17 @@ function SearchForm({
             </defs>
           </svg>
         </button>
-      )}
+      ) }
 
       <button
-        className={cn(
+        className={ cn(
           "flex h-10.5 shrink-0 px-4 justify-center items-center border rounded-lg",
           isLanding ? "border-(--color-text-primary)" : "border-(--color-bg-surface)",
           "bg-(--color-text-primary) text-[14px] font-extrabold text-(--color-bg-surface)",
-        )}
+        ) }
         type="submit"
       >
-        {isLanding ? "검색" : "다시 검색"}
+        { isLanding ? "검색" : "다시 검색" }
       </button>
     </form>
   );
@@ -151,10 +151,10 @@ function SearchForm({
 /**
  * 검색 결과 페이지
  */
-function SearchResultPage({query}: { query: string }) {
+function SearchResultPage({ query }: { query: string }) {
   const searchQuery = useQuery({
-    queryKey: ["movies", "search", {query: query}],
-    queryFn: () => searchMovies({query: query}),
+    queryKey: [ "movies", "search", { query: query } ],
+    queryFn: () => searchMovies({ query: query }),
     enabled: query.length > 0,
   });
 
@@ -162,90 +162,90 @@ function SearchResultPage({query}: { query: string }) {
 
   return (
     <main className="flex flex-col w-full px-20 py-6 min-h-[calc(100vh-80px)] bg-(--color-bg-page) pb-12">
-      {/*results-head*/}
+      {/*results-head*/ }
       <div className="flex flex-col w-full gap-4.25">
-        <h1 className={cn(
+        <h1 className={ cn(
           "flex flex-col m-0 w-full",
           "font-bold text-(--color-text-primary) text-[38px]",
-          "leading-11 tracking-[-1.71px]"
-        )}>
+          "leading-11 tracking-[-1.71px]",
+        ) }>
           영화 검색
         </h1>
         <SearchForm
-          key={query}
+          key={ query }
           variant="result"
-          initialValue={query}
+          initialValue={ query }
         />
       </div>
 
-      {/*results-toolbar*/}
-      <div className={cn(
+      {/*results-toolbar*/ }
+      <div className={ cn(
         "flex w-full h-13.5",
         "justify-between items-center",
         "border-t border-b border-(--color-border-default)",
-      )}>
+      ) }>
         <h2 className="font-bold text-[18px] text-(--color-text-primary)">
-          `{query}` 검색 결과
+          `{ query }` 검색 결과
         </h2>
         <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-          {searchQuery.data && `영화 ${searchQuery.data.total_results}편 · 1페이지`}
+          { searchQuery.data && `영화 ${ searchQuery.data.total_results }편 · 1페이지` }
         </span>
       </div>
 
-      {/*results-list*/}
-      {searchQuery.isLoading ? (
+      {/*results-list*/ }
+      { searchQuery.isLoading ? (
         <div role="status" className="py-5 px-1">
           검색 결과를 불러오는 중이에요.
         </div>
       ) : searchQuery.isError ? (
         <div role="alert" className="py-5 px-1">
-          {searchQuery.error.message}
+          { searchQuery.error.message }
         </div>
       ) : !(searchQuery.isSuccess && searchResults.length === 0) ? (
         <ul className="m-0 grid list-none grid-cols-2 gap-x-10 p-0">
-          {searchResults.map((movie) => {
+          { searchResults.map((movie) => {
             const posterUrl = getTmdbPosterUrl(movie.poster_path);
             return (
               <li
-                key={movie.id}
-                className={cn(
+                key={ movie.id }
+                className={ cn(
                   "flex w-full min-h-60 py-5 gap-4.5",
-                  "border-b border-(--color-border-default)"
-                )}
+                  "border-b border-(--color-border-default)",
+                ) }
               >
                 <img
-                  src={posterUrl}
-                  alt={`${movie.title} 포스터`}
+                  src={ posterUrl }
+                  alt={ `${ movie.title } 포스터` }
                   className="w-31.5 h-47.5 rounded-[10px] shrink-0"
                 />
 
                 <div className="w-full flex flex-col gap-2">
-                  <h3 className={cn("w-full m-0 font-bold text-[18px]",
-                    "text-(--color-text-primary) leading-[24.3px]"
-                  )}>
-                    {movie.title}
+                  <h3 className={ cn("w-full m-0 font-bold text-[18px]",
+                    "text-(--color-text-primary) leading-[24.3px]",
+                  ) }>
+                    { movie.title }
                   </h3>
                   <div className="flex w-full gap-2">
                   <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-                    {movie.original_title}
+                    { movie.original_title }
                   </span>
                     <span className="font-normal text-[12px] text-(--color-text-tertiary)">
-                    {movie.release_date}
+                    { movie.release_date }
                   </span>
                   </div>
                   <div className="min-h-16.5">
-                    <span className={cn(
+                    <span className={ cn(
                       "line-clamp-3",
                       "font-normal text-[12.5px] text-(--color-text-secondary)",
-                      "leading-[20.25px]"
-                    )}>
-                      {movie.overview}
+                      "leading-[20.25px]",
+                    ) }>
+                      { movie.overview }
                     </span>
                   </div>
                   <Link
                     className="flex gap-1 cursor-pointer text-(--color-action-primary)"
-                    to={"/movies/$movieId"}
-                    params={{movieId: String(movie.id)}}
+                    to={ "/movies/$movieId" }
+                    params={ { movieId: String(movie.id) } }
                   >
                   <span className="font-extrabold text-[12px]">
                     상세 보기
@@ -259,13 +259,13 @@ function SearchResultPage({query}: { query: string }) {
                 </div>
               </li>
             );
-          })}
+          }) }
         </ul>
       ) : (
         <div className="py-5 px-1">
           검색 결과가 없어요.
         </div>
-      )}
+      ) }
       <div className="fixed bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
         <Footer/>
       </div>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Footer from "../../components/movies/footer.tsx";
 import { cn } from "../../utils/cn.ts";
 import { getMe } from "../../api/members/me.ts";
@@ -21,19 +22,40 @@ export default function MyinfoPage() {
   });
 
   const memberEmail = meQuery.data?.email;
+  const [pagination, setPagination] = useState({ memberEmail, page: 1 });
 
   // 즐겨찾기한 영화 목록
   const favoritesQuery = useQuery({
     queryKey: [ "favorites", "member", memberEmail, "list" ],
     queryFn: getFavorites,
-    enabled: Boolean(accessToken),
+    enabled: Boolean(accessToken) && memberEmail !== undefined,
   });
 
   const favorites = accessToken ? favoritesQuery.data ?? [] : [];
 
+  const pageSize = 5;
+  const totalPages = Math.ceil(favorites.length / pageSize);
+  const requestedPage = pagination.memberEmail === memberEmail ? pagination.page : 1;
+  const page = Math.min(requestedPage, Math.max(1, totalPages));
+  const visibleFavorites = favorites.slice((page - 1) * pageSize, page * pageSize);
+
+  const pageGroupSize = 5;
+  const startPage = Math.floor((page - 1) / pageGroupSize) * pageGroupSize + 1;
+  const pageNumbers = Array.from(
+    { length: Math.max(0, Math.min(pageGroupSize, totalPages - startPage + 1)) },
+    (_, index) => startPage + index,
+  );
+
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === page) {
+      return;
+    }
+    setPagination({ memberEmail, page: nextPage });
+  };
+
   // tmdb api에서 즐겨찾기 영화 정보 조회
   const movieQueries = useQueries({
-    queries: favorites.map((favorite) => ({
+    queries: visibleFavorites.map((favorite) => ({
       queryKey: [ "movies", "detail", favorite.movieId ],
       queryFn: () => getMovieDetail(favorite.movieId),
       staleTime: 60 * 1000, // 1분
@@ -126,8 +148,10 @@ export default function MyinfoPage() {
             <p>즐겨찾기를 불러오는 중입니다.</p>
           ) : favoritesQuery.isError ? (
             <p>즐겨찾기를 불러오지 못했습니다.</p>
+          ) : favorites.length === 0 ? (
+            <p>즐겨찾기한 영화가 없습니다.</p>
           ) : (
-            favorites.map((favorite, index) => {
+            visibleFavorites.map((favorite, index) => {
               const movieQuery = movieQueries[index];
               const movie = movieQuery.data;
 
@@ -178,45 +202,52 @@ export default function MyinfoPage() {
             })
           ) }
         </div>
-        <nav className="flex w-full items-center justify-center gap-3 pb-12">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            className={ arrowClassName }
-            disabled
-          >
-            <span
-              aria-hidden="true"
-              className="block size-6 bg-current"
-              style={ arrowMaskStyle }
-            />
-          </button>
-          <div className="flex h-9 w-fit items-center gap-1">
+        {accessToken && favoritesQuery.isSuccess && totalPages > 0 && (
+          <nav className="flex w-full items-center justify-center gap-3 pb-12" aria-label="즐겨찾기 페이지">
             <button
               type="button"
-              className={ cn(
-                "flex size-9 shrink-0 items-center justify-center",
-                "cursor-pointer rounded-[7px] border-0 px-1.5 py-px",
-                "text-center text-[13px] leading-none font-bold tracking-normal",
-                "bg-(--color-text-primary) text-(--color-bg-surface)",
-              ) }
+              aria-label="이전 페이지"
+              className={arrowClassName}
+              disabled={page <= 1}
+              onClick={() => handlePageChange(page - 1)}
             >
-              1
+              <span aria-hidden="true" className="block size-6 bg-current" style={arrowMaskStyle} />
             </button>
-          </div>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            className={ arrowClassName }
-            disabled
-          >
-            <span
-              aria-hidden="true"
-              className="block size-6 rotate-180 bg-current"
-              style={ arrowMaskStyle }
-            />
-          </button>
-        </nav>
+            <div className="flex h-9 w-fit items-center gap-1">
+              {pageNumbers.map((pageNumber) => {
+                const isActive = page === pageNumber;
+                return (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    aria-label={`${pageNumber}페이지`}
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => handlePageChange(pageNumber)}
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center",
+                      "cursor-pointer rounded-[7px] border-0 px-1.5 py-px",
+                      "text-center text-[13px] leading-none font-bold tracking-normal",
+                      isActive
+                        ? "bg-(--color-text-primary) text-(--color-bg-surface)"
+                        : "bg-transparent text-(--color-text-secondary)",
+                    )}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              aria-label="다음 페이지"
+              className={arrowClassName}
+              disabled={page >= totalPages}
+              onClick={() => handlePageChange(page + 1)}
+            >
+              <span aria-hidden="true" className="block size-6 rotate-180 bg-current" style={arrowMaskStyle} />
+            </button>
+          </nav>
+        )}
       </div>
       <div className="fixed bottom-0 left-0 z-20 w-full">
         <Footer/>

@@ -11,9 +11,22 @@ import { getFavorite } from "../../api/favorites/get-favorite.ts";
 import { useAuthStore } from "../../stores/auth-store.ts";
 import { getMe } from "../../api/members/me.ts";
 import { useFavoriteMutation } from "../../hooks/use-favorite-mutation.ts";
+import { getRatings } from "../../api/members/get-ratings.ts";
+import { getMemberId } from "../../utils/get-member-id.ts";
+import { useMovieRecordMutation } from "../../hooks/use-movie-record-mutation.ts";
 
 export function MovieDetailPage() {
-  const [ rating, setRating ] = useState(0);
+  const { movieId } = useParams({ from: "/movies/$movieId" });
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  return <MovieDetailContent key={`${movieId}:${accessToken ?? "guest"}`} />;
+}
+
+function MovieDetailContent() {
+  const [ ratingDraft, setRating ] = useState<number | null>(null);
+  const [ commentDraft, setComment ] = useState<string | null>(null);
+
+  const movieRecordMutation = useMovieRecordMutation();
 
   const { movieId: movieIdParam } = useParams({ from: "/movies/$movieId" });
   const movieId = Number(movieIdParam);
@@ -35,6 +48,27 @@ export function MovieDetailPage() {
   });
 
   const memberEmail = meQuery.data?.email;
+  const memberId = getMemberId(accessToken);
+
+  const ratingsQuery = useQuery({
+    queryKey: [ "ratings", "member", memberEmail, "list", memberId ],
+    queryFn: () => {
+      if (memberId === null) {
+        throw new Error("회원 정보를 확인할 수 없어요.");
+      }
+      return getRatings(memberId);
+    },
+    enabled: Boolean(accessToken) && Boolean(memberEmail) && memberId !== null,
+  });
+
+  const savedRating = ratingsQuery.data?.find((item) => item.movieId === movieId) ?? null;
+  const rating = ratingDraft ?? savedRating?.score ?? 0;
+  const comment = commentDraft ?? savedRating?.comment ?? "";
+  const recordDisabled = movieRecordMutation.isPending || (
+    Boolean(accessToken) && (
+      !memberEmail || memberId === null || !ratingsQuery.isSuccess || ratingsQuery.isFetching
+    )
+  );
 
   const favoriteQuery = useQuery({
     queryKey: [ "favorites", "member", memberEmail, "movie", movieId ],
@@ -78,6 +112,76 @@ export function MovieDetailPage() {
         getMovieDetailErrorMessage(movieDetailQuery.error) : null;
 
   const movie = movieDetailQuery.data;
+
+  const handleSaveRecord = () => {
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    if (!memberEmail || !isValidMovieId || recordDisabled) {
+      return;
+    }
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      alert("별점을 선택해 주세요.");
+      return;
+    }
+
+    const trimmedComment = comment.trim();
+
+    if (savedRating && trimmedComment.length > 500) {
+      alert("수정할 후기는 500자 이하로 입력해 주세요.");
+      return;
+    }
+
+    const body = {
+      score: rating,
+      ...(trimmedComment ? { comment: trimmedComment } : {}),
+    };
+
+    movieRecordMutation.mutate(
+      savedRating ? {
+        action: "update-rating",
+        memberEmail,
+        ratingId: savedRating.ratingId,
+        body,
+      } : {
+        action: "create-record",
+        memberEmail,
+        body: {
+          movieId,
+          score: rating,
+          ...(trimmedComment ? { comment: trimmedComment } : {}),
+          addToFavorites: false,
+        },
+      },
+      {
+        onSuccess: (result) => {
+          setRating(result.rating?.score ?? 0);
+          setComment(result.rating?.comment ?? "");
+          alert(savedRating ? "평점을 수정했어요." : "영화 기록을 저장했어요.");
+        },
+      },
+    );
+  };
+
+  const handleDeleteRating = () => {
+    if (!accessToken || !memberEmail || !savedRating || recordDisabled) {
+      return;
+    }
+
+    movieRecordMutation.mutate({
+      action: "delete-rating",
+      memberEmail,
+      ratingId: savedRating.ratingId,
+    }, {
+      onSuccess: () => {
+        setRating(null);
+        setComment(null);
+        alert("평점을 삭제했어요.");
+      },
+    });
+  };
 
   if (statusMessage !== null || !movie) {
     return (
@@ -221,6 +325,31 @@ export function MovieDetailPage() {
             별점은 필수, 후기는 선택이에요.
           </p>
 
+          {accessToken && (
+            memberId === null ? (
+              <p role="alert">회원 정보를 확인할 수 없어요. 다시 로그인해 주세요.</p>
+            ) : meQuery.isError || ratingsQuery.isError ? (
+              <div>
+                <p role="alert">평점 정보를 불러오지 못했어요.</p>
+                <button
+                  type="button"
+                  disabled={meQuery.isFetching || ratingsQuery.isFetching}
+                  onClick={() => {
+                    if (meQuery.isError) {
+                      void meQuery.refetch();
+                    } else {
+                      void ratingsQuery.refetch();
+                    }
+                  }}
+                >
+                  다시 시도
+                </button>
+              </div>
+            ) : !ratingsQuery.isSuccess ? (
+              <p role="status">평점을 불러오는 중이에요.</p>
+            ) : null
+          )}
+
           {/* 별점 버튼 */ }
           <div className="flex w-full gap-1">
             { Array.from({ length: 5 }, (_, index) => {
@@ -234,6 +363,7 @@ export function MovieDetailPage() {
                   aria-label={ `${ score }점` }
                   aria-pressed={ rating === score }
                   onClick={ () => setRating(score) }
+                  disabled={ recordDisabled }
                   className={ cn(
                     "flex size-9.5 items-center justify-center rounded-lg",
                     "border border-(--color-border-default)",
@@ -256,6 +386,9 @@ export function MovieDetailPage() {
           </div>
 
           <textarea
+            value={ comment }
+            onChange={ (event) => setComment(event.target.value) }
+            disabled={ recordDisabled }
             placeholder="영화를 보고 느낀 점을 남겨보세요."
             className={ cn(
               "h-25.5 w-full resize-none rounded-lg px-3 py-4",
@@ -265,14 +398,30 @@ export function MovieDetailPage() {
               "placeholder:text-(--color-text-tertiary)",
             ) }/>
 
-          <button className={ cn(
-            "flex items-center justify-center w-full h-10.5 px-4 ",
-            "rounded-lg bg-(--color-text-primary)",
-            "text-(--color-bg-surface) text-[14px] font-extrabold",
-            "cursor-pointer",
-          ) }>
-            평점 저장
+          <button
+            className={ cn(
+              "flex items-center justify-center w-full h-10.5 px-4 ",
+              "rounded-lg bg-(--color-text-primary)",
+              "text-(--color-bg-surface) text-[14px] font-extrabold",
+              "cursor-pointer",
+            ) }
+            type="button"
+            onClick={ handleSaveRecord }
+            disabled={ rating === 0 || recordDisabled }
+          >
+            { movieRecordMutation.isPending ? "처리 중..." : savedRating ? "평점 수정" : "평점 저장" }
           </button>
+
+          {savedRating && (
+            <button
+              type="button"
+              onClick={handleDeleteRating}
+              disabled={recordDisabled}
+              className="h-10.5 rounded-lg border border-(--color-border-default) text-(--color-text-primary) disabled:opacity-50"
+            >
+              평점 삭제
+            </button>
+          )}
 
         </aside>
 
