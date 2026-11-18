@@ -1,73 +1,92 @@
-import {Link} from "@tanstack/react-router";
-import {cn} from "../../utils/cn.ts";
+import { Link } from "@tanstack/react-router";
+import { cn } from "../../utils/cn.ts";
+import { useAuthStore } from "../../stores/auth-store.ts";
+import { useQuery } from "@tanstack/react-query";
+import { getMe } from "../../api/members/me.ts";
 
 export default function Header() {
+
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const meQuery = useQuery({
+    queryKey: [ "members", "me" ],
+    queryFn: getMe,
+    enabled: Boolean(accessToken), // 토큰이 있을 때만 조회
+    staleTime: 5 * 60 * 1000, // 5분
+    retry: false,
+  });
+
   return (
-    <header className={cn(
+    <header className={ cn(
       "flex items-center justify-between",
       "border-b border-(--color-border-default)",
       "px-20 py-6",
-    )}>
-      <div className={cn("flex items-center gap-10.5")}>
-        <Link className={cn("flex items-center gap-2.5 text-inherit no-underline")} to="/">
-          <div className={cn(
+    ) }>
+      <div className={ cn("flex items-center gap-10.5") }>
+        <Link className={ cn("flex items-center gap-2.5 text-inherit no-underline") } to="/">
+          <div className={ cn(
             "flex size-8 flex-col items-center justify-center",
             "rounded-lg border-2 border-(--color-text-primary)",
             "px-0 py-1.5",
-          )}>
+          ) }>
             <img src="/icons/movie.svg" alt=""/>
           </div>
-          <span className={cn(
+          <span className={ cn(
             "text-[20px] font-black tracking-[-0.7px] align-middle",
-          )}>UMCine</span>
+          ) }>UMCine</span>
         </Link>
 
-        <nav className={cn("flex items-center gap-7.5")}>
+        <nav className={ cn("flex items-center gap-7.5") }>
           <Link
             to="/"
-            activeOptions={{exact: true}}
-            className={cn(
+            activeOptions={ { exact: true } }
+            className={ cn(
               "text-center text-[14px] font-bold align-middle",
-            )}
-            activeProps={{
+            ) }
+            activeProps={ {
               className: "text-(--color-text-primary) underline decoration-solid",
-            }}
-            inactiveProps={{
+            } }
+            inactiveProps={ {
               className: "text-(--color-text-secondary) no-underline",
-            }}
+            } }
           >영화</Link>
           <Link
             to="/search"
-            activeOptions={{exact: true}}
-            className={cn(
+            activeOptions={ { exact: true } }
+            className={ cn(
               "text-center text-[14px] font-bold align-middle",
-            )}
-            activeProps={{
+            ) }
+            activeProps={ {
               className: "text-(--color-text-primary) underline decoration-solid",
-            }}
-            inactiveProps={{
+            } }
+            inactiveProps={ {
               className: "text-(--color-text-secondary) no-underline",
-            }}
+            } }
           >검색</Link>
           <Link
-            to="/"
-            className={cn(
-              "text-center text-[14px] font-bold align-middle no-underline",
-              "text-(--color-text-secondary)",
-            )}
+            to="/my-info"
+            activeOptions={ { exact: true } }
+            className={ cn(
+              "text-center text-[14px] font-bold align-middle",
+            ) }
+            activeProps={ {
+              className: "text-(--color-text-primary) underline decoration-solid",
+            } }
+            inactiveProps={ {
+              className: "text-(--color-text-secondary) no-underline",
+            } }
           >내 정보</Link>
         </nav>
       </div>
 
-      <div className={cn("flex items-center gap-2.5")}>
+      <div className={ cn("flex items-center gap-2.5") }>
         <Link
           to="/search"
-          className={cn(
+          className={ cn(
             "flex size-10.5 flex-col items-center justify-center",
             "rounded-lg border border-(--color-border-default)",
             "bg-(--color-bg-surface) px-1.5 py-px",
             "cursor-pointer text-(--color-text-secondary)",
-          )}
+          ) }
           aria-label="검색"
         >
           <svg width="24" height="24" viewBox="80 80 24 24" aria-hidden="true">
@@ -77,18 +96,35 @@ export default function Header() {
           </svg>
         </Link>
 
-        <Link
-          className={cn(
-            "flex justify-center items-center h-10.5 w-17.75 px-4 py-0",
-            "rounded-lg border border-(--color-bg-surface)",
-            "bg-(--color-action-primary)",
-            "text-center text-[14px] font-extrabold align-middle",
-            "cursor-pointer text-(--color-bg-surface)",
-          )}
-          to="/login"
-        >
-          로그인
-        </Link>
+        { !accessToken ? (
+          <Link
+            className={ cn(
+              "flex justify-center items-center h-10.5 w-17.75 px-4 py-0",
+              "rounded-lg border border-(--color-bg-surface)",
+              "bg-(--color-action-primary)",
+              "text-center text-[14px] font-extrabold align-middle",
+              "cursor-pointer text-(--color-bg-surface)",
+            ) }
+            to="/login"
+          >
+            로그인
+          </Link>
+        ) : meQuery.isLoading ? (
+          <span className="h-10 w-24 animate-pulse rounded-lg bg-gray-200"/>
+        ) : (
+          <Link
+            className={ cn(
+              "flex justify-center items-center h-10.5 px-4 py-0",
+              "rounded-lg border border-(--color-bg-surface)",
+              "bg-(--color-action-primary)",
+              "text-center text-[14px] font-extrabold align-middle",
+              "cursor-pointer text-(--color-bg-surface)",
+            ) }
+            to="/my-info"
+          >
+            마이페이지
+          </Link>
+        ) }
       </div>
     </header>
   );

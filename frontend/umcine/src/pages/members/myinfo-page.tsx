@@ -1,7 +1,45 @@
 import Footer from "../../components/movies/footer.tsx";
-import {cn} from "../../utils/cn.ts";
+import { cn } from "../../utils/cn.ts";
+import { getMe } from "../../api/members/me.ts";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "../../stores/auth-store.ts";
+import { Link } from "@tanstack/react-router";
+import { getFavorites } from "../../api/favorites/get-favorites.ts";
+import { getMovieDetail } from "../../api/movies/get-movie-detail.ts";
+import { getTmdbPosterUrl } from "../../utils/movies/tmdb-image.ts";
 
 export default function MyinfoPage() {
+
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  const meQuery = useQuery({
+    queryKey: [ "members", "me" ],
+    queryFn: getMe,
+    enabled: Boolean(accessToken),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const memberEmail = meQuery.data?.email;
+
+  // 즐겨찾기한 영화 목록
+  const favoritesQuery = useQuery({
+    queryKey: [ "favorites", "member", memberEmail, "list" ],
+    queryFn: getFavorites,
+    enabled: Boolean(accessToken),
+  });
+
+  const favorites = accessToken ? favoritesQuery.data ?? [] : [];
+
+  // tmdb api에서 즐겨찾기 영화 정보 조회
+  const movieQueries = useQueries({
+    queries: favorites.map((favorite) => ({
+      queryKey: [ "movies", "detail", favorite.movieId ],
+      queryFn: () => getMovieDetail(favorite.movieId),
+      staleTime: 60 * 1000, // 1분
+    })),
+  });
+
   const arrowClassName = cn(
     "flex size-6 shrink-0 items-center justify-center border-0 bg-transparent p-0",
     "text-(--color-text-secondary) cursor-pointer",
@@ -15,20 +53,23 @@ export default function MyinfoPage() {
   };
 
   return (
-    <main className={cn(
+    <main className={ cn(
       "flex flex-col min-h-[calc(100vh-90px)] w-full bg-(--color-bg-page) pb-14.25 pt-6 px-20 gap-7",
-    )}>
+    ) }>
       <div className="flex w-full h-fit justify-between">
         <div className="font-bold text-[31px] leading-[100%] tracking-[-1.24px] text-(--color-text-primary)">
           내 정보
         </div>
-        <button className={cn(
-          "flex h-10.5 justify-center items-center px-4 cursor-pointer",
-          "rounded-lg border border-(--color-bg-surface) bg-(--color-action-primary)",
-          "font-bold text-[14px] text-(--color-bg-surface) leading-[100%]"
-        )}>
+        <Link
+          className={ cn(
+            "flex h-10.5 justify-center items-center px-4 cursor-pointer",
+            "rounded-lg border border-(--color-bg-surface) bg-(--color-action-primary)",
+            "font-bold text-[14px] text-(--color-bg-surface) leading-[100%]",
+          ) }
+          to="/edit-profile"
+        >
           정보 수정
-        </button>
+        </Link>
       </div>
       <section className="flex flex-col w-full h-fit gap-4 py-3 border-t border-b border-(--color-border-default)">
         <h2 className="flex w-full h-fit font-bold text-[17px] leading-[100%] text-(--color-text-primary)">
@@ -57,7 +98,7 @@ export default function MyinfoPage() {
                 닉네임
               </label>
               <strong className="flex w-full font-bold text-[14px] text-(--color-text-primary) leading-[100%]">
-                gs0428
+                { meQuery.data?.nickname }
               </strong>
             </div>
             <div className="flex w-190 h-fit max-w-190 gap-7">
@@ -66,7 +107,7 @@ export default function MyinfoPage() {
                   이메일
                 </label>
                 <strong className="flex w-full font-bold text-[14px] text-(--color-text-primary) leading-[100%]">
-                  gwangsoo@cinemalab.kr
+                  { meQuery.data?.email }
                 </strong>
               </div>
             </div>
@@ -78,116 +119,87 @@ export default function MyinfoPage() {
           내 즐겨찾기
         </div>
         <div className="grid h-84.75 w-full max-w-7xl grid-rows-1 grid-cols-5 gap-x-4.5 gap-y-5">
-          <article className={cn("relative flex flex-col gap-1")}>
-            <div className={cn(
-              "relative h-68.5 w-full",
-              "overflow-hidden rounded-[10px]",
-              "bg-(--color-bg-page)",
-            )}>
-              <img
-                className={cn("block h-full w-full object-cover")}
-                src="../../../public/images/movies/spider-man-brand-new-day.jpg"
-                alt=""
-              />
-            </div>
-            <div
-              className={cn(
-                "h-5.5 pt-1.25 truncate",
-                "text-[14px] leading-[100%] font-extrabold align-middle",
-                "text-(--color-text-primary)",
-              )}
-            >
-              스파이더맨: 브랜드 뉴 데이
-            </div>
-            <div className={cn(
-              "h-3.5",
-              "text-[12px] font-normal align-middle leading-[100%]",
-              "text-(--color-text-tertiary)",
-            )}>
-              2026.07.29
-            </div>
-          </article>
-          <article className={cn("relative flex flex-col gap-1")}>
-            <div className={cn(
-              "relative h-68.5 w-full",
-              "overflow-hidden rounded-[10px]",
-              "bg-(--color-bg-page)",
-            )}>
-              <img
-                className={cn("block h-full w-full object-cover")}
-                src="../../../public/images/movies/odyssey.jpg"
-                alt=""
-              />
-            </div>
-            <div
-              className={cn(
-                "h-5.5 pt-1.25 truncate",
-                "text-[14px] leading-[100%] font-extrabold align-middle",
-                "text-(--color-text-primary)",
-              )}
-            >
-              오디세이
-            </div>
-            <div className={cn(
-              "h-3.5",
-              "text-[12px] font-normal align-middle",
-              "text-(--color-text-tertiary) leading-[100%]",
-            )}>
-              2026.08.05
-            </div>
-          </article>
-          <article className={cn("relative flex flex-col gap-1")}>
-            <div className={cn(
-              "relative h-68.5 w-full",
-              "overflow-hidden rounded-[10px]",
-              "bg-(--color-bg-page)",
-            )}>
-              <img
-                className={cn("block h-full w-full object-cover")}
-                src="../../../public/images/movies/minions-monsters.jpg"
-                alt=""
-              />
-            </div>
-            <div
-              className={cn(
-                "h-5.5 pt-1.25 truncate",
-                "text-[14px] leading-[100%] font-extrabold align-middle",
-                "text-(--color-text-primary)",
-              )}
-            >
-              미니언즈 & 몬스터즈
-            </div>
-            <div className={cn(
-              "h-3.5",
-              "text-[12px] font-normal align-middle",
-              "text-(--color-text-tertiary)  leading-[100%]",
-            )}>
-              2026.07.15
-            </div>
-          </article>
+
+          { !accessToken ? (
+            <p>로그인이 필요합니다.</p>
+          ) : favoritesQuery.isPending ? (
+            <p>즐겨찾기를 불러오는 중입니다.</p>
+          ) : favoritesQuery.isError ? (
+            <p>즐겨찾기를 불러오지 못했습니다.</p>
+          ) : (
+            favorites.map((favorite, index) => {
+              const movieQuery = movieQueries[index];
+              const movie = movieQuery.data;
+
+              return (
+                <Link
+                  key={ favorite.favoriteId }
+                  className={ cn("relative flex flex-col gap-1 cursor-pointer") }
+                  to="/movies/$movieId"
+                  params={ { movieId: String(favorite.movieId) } }
+                >
+                  { movie ? (
+                    <>
+                      <div className={ cn(
+                        "relative h-68.5 w-full",
+                        "overflow-hidden rounded-[10px]",
+                        "bg-(--color-bg-page)",
+                      ) }>
+                        <img
+                          className={ cn("block h-full w-full object-cover") }
+                          src={ getTmdbPosterUrl(movie.poster_path) }
+                          alt={ movie.title }
+                        />
+                      </div>
+                      <div
+                        className={ cn(
+                          "h-5.5 pt-1.25 truncate",
+                          "text-[14px] leading-[100%] font-extrabold align-middle",
+                          "text-(--color-text-primary)",
+                        ) }
+                      >
+                        { movie.title }
+                      </div>
+                      <div className={ cn(
+                        "h-3.5",
+                        "text-[12px] font-normal align-middle leading-[100%]",
+                        "text-(--color-text-tertiary)",
+                      ) }>
+                        { movie.release_date || "개봉일 미정" }
+                      </div>
+                    </>
+                  ) : movieQuery.isError ? (
+                    <p>영화 정보를 불러오지 못했습니다.</p>
+                  ) : (
+                    <p>영화 정보를 불러오는 중입니다.</p>
+                  ) }
+                </Link>
+              );
+            })
+          ) }
         </div>
         <nav className="flex w-full items-center justify-center gap-3 pb-12">
           <button
             type="button"
             aria-label="이전 페이지"
-            className={arrowClassName}
+            className={ arrowClassName }
             disabled
           >
             <span
               aria-hidden="true"
               className="block size-6 bg-current"
-              style={arrowMaskStyle}
+              style={ arrowMaskStyle }
             />
           </button>
           <div className="flex h-9 w-fit items-center gap-1">
             <button
               type="button"
-              className={cn(
+              className={ cn(
                 "flex size-9 shrink-0 items-center justify-center",
                 "cursor-pointer rounded-[7px] border-0 px-1.5 py-px",
                 "text-center text-[13px] leading-none font-bold tracking-normal",
-                "bg-(--color-text-primary) text-(--color-bg-surface)"
-              )}
+                "bg-(--color-text-primary) text-(--color-bg-surface)",
+              ) }
             >
               1
             </button>
@@ -195,13 +207,13 @@ export default function MyinfoPage() {
           <button
             type="button"
             aria-label="다음 페이지"
-            className={arrowClassName}
+            className={ arrowClassName }
             disabled
           >
             <span
               aria-hidden="true"
               className="block size-6 rotate-180 bg-current"
-              style={arrowMaskStyle}
+              style={ arrowMaskStyle }
             />
           </button>
         </nav>

@@ -1,11 +1,11 @@
-import {useState} from "react";
-import {cn} from "../../utils/cn.ts";
+import { useState } from "react";
+import { cn } from "../../utils/cn.ts";
 
-import {checkEmailDuplicate} from "../../api/members/check-email-duplicate.ts";
-import {checkNicknameDuplicate} from "../../api/members/check-nickname-duplicate.ts";
-import {signup} from "../../api/members/signup.ts";
+import { checkEmailDuplicate } from "../../api/members/check-email-duplicate.ts";
+import { checkNicknameDuplicate } from "../../api/members/check-nickname-duplicate.ts";
 
-import {Link, useNavigate} from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { useSignupMutation } from "../../hooks/use-signup-mutation.ts";
 
 const DEFAULT_DUPLICATE_CHECK = {
   isChecking: false,
@@ -31,7 +31,7 @@ type DefaultFormKey = keyof typeof DEFAULT_FORM;
 type DefaultFormValue = (typeof DEFAULT_FORM)[DefaultFormKey];
 
 export function SignupPage() {
-  const [form, setForm] = useState(DEFAULT_FORM);
+  const [ form, setForm ] = useState(DEFAULT_FORM);
 
   // 입력값의 유효성 검사
   const isEmailValid = EMAIL_REGEX.test(form.email.trim());
@@ -55,7 +55,7 @@ export function SignupPage() {
     isPasswordValid &&
     isPasswordConfirmValid;
 
-  const [duplicateCheck, setDuplicateCheck] = useState({
+  const [ duplicateCheck, setDuplicateCheck ] = useState({
     email: DEFAULT_DUPLICATE_CHECK,
     nickname: DEFAULT_DUPLICATE_CHECK,
   });
@@ -66,37 +66,27 @@ export function SignupPage() {
     duplicateCheck.email.isAvailable &&
     duplicateCheck.nickname.isAvailable;
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
+  const signupMutation = useSignupMutation();
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!canSubmit || isSubmitting) return;
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-    setIsSubmitting(true);
-    try {
-      const response = await signup({
-        email: form.email.trim(),
-        nickname: form.nickname.trim(),
-        password: form.password,
-      });
-      alert(response.message);
-      // 로그인 페이지 연결 후 주석 해제
-      navigate({to: "/login"});
-    } catch {
-      alert("회원가입에 실패했어요. 다시 시도해 주세요.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    if (!canSubmit || signupMutation.isPending) return;
+
+    signupMutation.mutate({
+      email: form.email.trim(),
+      nickname: form.nickname.trim(),
+      password: form.password,
+    });
   };
 
   const handleChangeField = (key: DefaultFormKey, value: DefaultFormValue) => {
     if (key === "email" || key === "nickname") {
       if (duplicateCheck[key].isChecking) return;
       // 확인한 값을 바꾸면 다시 중복 확인해야 함
-      setDuplicateCheck((prev) => ({...prev, [key]: DEFAULT_DUPLICATE_CHECK}));
+      setDuplicateCheck((prev) => ({ ...prev, [key]: DEFAULT_DUPLICATE_CHECK }));
     }
-    setForm((prev) => ({...prev, [key]: value}));
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleCheckDuplicate = async (key: DuplicateCheckKey) => {
@@ -106,7 +96,7 @@ export function SignupPage() {
     const label = key === "email" ? "이메일" : "닉네임";
     setDuplicateCheck((prev) => ({
       ...prev,
-      [key]: {isChecking: true, isAvailable: false},
+      [key]: { isChecking: true, isAvailable: false },
     }));
 
     try {
@@ -117,23 +107,23 @@ export function SignupPage() {
       const isAvailable = response.available;
       setDuplicateCheck((prev) => ({
         ...prev,
-        [key]: {...prev[key], isAvailable},
+        [key]: { ...prev[key], isAvailable },
       }));
       alert(
         isAvailable
-          ? `사용할 수 있는 ${label}이에요.`
-          : `이미 사용 중인 ${label}이에요.`,
+          ? `사용할 수 있는 ${ label }이에요.`
+          : `이미 사용 중인 ${ label }이에요.`,
       );
     } catch {
       setDuplicateCheck((prev) => ({
         ...prev,
-        [key]: {...prev[key], isAvailable: false},
+        [key]: { ...prev[key], isAvailable: false },
       }));
       alert("중복 확인에 실패했어요. 다시 시도해 주세요.");
     } finally {
       setDuplicateCheck((prev) => ({
         ...prev,
-        [key]: {...prev[key], isChecking: false},
+        [key]: { ...prev[key], isChecking: false },
       }));
     }
   };
@@ -141,10 +131,10 @@ export function SignupPage() {
   // noValidate는 폼 제출 시 브라우저의 기본 유효성 검사를 끔
   return (
     <main className="flex w-full flex-1 justify-center items-center bg-(--color-bg-page)">
-      <form onSubmit={handleSubmit} className="flex flex-col w-107.5 gap-4">
-        <h1 className={cn(
+      <form onSubmit={ handleSubmit } className="flex flex-col w-107.5 gap-4">
+        <h1 className={ cn(
           "flex w-full flex-col",
-          "text-(--color-text-primary) font-bold text-[34px] leading-[100%] tracking-[-1_53]")}
+          "text-(--color-text-primary) font-bold text-[34px] leading-[100%] tracking-[-1_53]") }
         >
           회원가입
         </h1>
@@ -152,142 +142,146 @@ export function SignupPage() {
           <div className="flex flex-col w-full font-bold text-[13px] tracking-normal px-1">
             이메일
           </div>
-          <div className={cn(
+          <div className={ cn(
             "flex w-full min-h-12 rounded-lg border gap-2.25 pl-3.25 pr-3.25 pb-3.5 pt-3.5",
-            "border-(--color-border-default) bg-(--color-bg-surface)"
-          )}>
+            "border-(--color-border-default) bg-(--color-bg-surface)",
+          ) }>
             <input
               type="email"
-              value={form.email}
-              onChange={(e) => handleChangeField("email", e.target.value)}
+              value={ form.email }
+              onChange={ (e) => handleChangeField("email", e.target.value) }
               placeholder="name@example.com"
-              className={cn(
+              className={ cn(
                 "box-border w-full",
-                "px-0.5 py-px",
+                "px-0.5 py-px focus:outline-none",
                 "text-[14px] font-normal leading-none tracking-normal",
-                "placeholder:text-(--color-text-tertiary)"
-              )}
+                "placeholder:text-(--color-text-tertiary)",
+              ) }
             />
             <button
               type="button"
               className="shrink-0 font-bold text-[12px] text-(--color-action-primary) cursor-pointer"
-              disabled={!isEmailValid || duplicateCheck.email.isChecking}
-              onClick={() => handleCheckDuplicate("email")}
+              disabled={ !isEmailValid || duplicateCheck.email.isChecking }
+              onClick={ () => handleCheckDuplicate("email") }
             >
-              {duplicateCheck.email.isChecking ? "확인 중" : "중복 확인"}
+              { duplicateCheck.email.isChecking ? "확인 중" : "중복 확인" }
             </button>
           </div>
-          {showEmailError && (
-            <div className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
+          { showEmailError && (
+            <div
+              className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
               이메일 형식을 확인해 주세요.
             </div>
-          )}
+          ) }
         </div>
         <div className="flex flex-col w-full gap-2">
           <div className="flex flex-col w-full font-bold text-[13px] tracking-normal px-1">
             닉네임
           </div>
-          <div className={cn(
+          <div className={ cn(
             "flex w-full min-h-12 rounded-lg border gap-2.25 pl-3.25 pr-3.25 pb-3.5 pt-3.5",
-            "border-(--color-border-default) bg-(--color-bg-surface)"
-          )}>
+            "border-(--color-border-default) bg-(--color-bg-surface)",
+          ) }>
             <input
               type="text"
-              value={form.nickname}
-              onChange={(e) => handleChangeField("nickname", e.target.value)}
+              value={ form.nickname }
+              onChange={ (e) => handleChangeField("nickname", e.target.value) }
               placeholder="2~12자"
-              className={cn(
+              className={ cn(
                 "box-border w-full",
-                "px-0.5 py-px",
+                "px-0.5 py-px focus:outline-none",
                 "text-[14px] font-normal leading-none tracking-normal",
-                "placeholder:text-(--color-text-tertiary)"
-              )}
+                "placeholder:text-(--color-text-tertiary)",
+              ) }
             />
             <button
               type="button"
               className="shrink-0 font-bold text-[12px] text-(--color-action-primary) cursor-pointer"
-              disabled={!isNicknameValid || duplicateCheck.nickname.isChecking}
-              onClick={() => handleCheckDuplicate("nickname")}
+              disabled={ !isNicknameValid || duplicateCheck.nickname.isChecking }
+              onClick={ () => handleCheckDuplicate("nickname") }
             >
-              {duplicateCheck.nickname.isChecking ? "확인 중" : "중복 확인"}
+              { duplicateCheck.nickname.isChecking ? "확인 중" : "중복 확인" }
             </button>
           </div>
-          {showNicknameError && (
-            <div className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
+          { showNicknameError && (
+            <div
+              className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
               닉네임은 2~12자로 입력해 주세요.
             </div>
-          )}
+          ) }
         </div>
         <div className="flex flex-col w-full gap-1">
           <div className="flex flex-col w-full gap-2">
             <div className="flex flex-col w-full font-bold text-[13px] tracking-normal px-1">
               비밀번호
             </div>
-            <div className={cn(
+            <div className={ cn(
               "flex w-full min-h-12 rounded-lg border gap-2.25 pl-3.25 pr-3.25 pb-3.5 pt-3.5",
-              "border-(--color-border-default) bg-(--color-bg-surface)"
-            )}>
+              "border-(--color-border-default) bg-(--color-bg-surface)",
+            ) }>
               <input
                 type="password"
-                value={form.password}
-                onChange={(e) => handleChangeField("password", e.target.value)}
+                value={ form.password }
+                onChange={ (e) => handleChangeField("password", e.target.value) }
                 placeholder="8자 이상"
-                className={cn(
+                className={ cn(
                   "box-border w-full",
-                  "px-0.5 py-px",
+                  "px-0.5 py-px focus:outline-none",
                   "text-[14px] font-normal leading-none tracking-normal",
-                  "placeholder:text-(--color-text-tertiary)"
-                )}
+                  "placeholder:text-(--color-text-tertiary)",
+                ) }
               />
             </div>
           </div>
           <div className="flex flex-col w-full px-1 font-normal text-[11px] text-(--color-text-tertiary)">
             영문 대·소문자, 숫자, 특수문자를 모두 포함해 8자 이상 입력해 주세요
           </div>
-          {showPasswordError && (
-            <div className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
+          { showPasswordError && (
+            <div
+              className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
               비밀번호를 다시 한번 확인해주세요.
             </div>
-          )}
+          ) }
         </div>
         <div className="flex flex-col w-full gap-2">
           <div className="flex flex-col w-full font-bold text-[13px] tracking-normal px-1">
             비밀번호 확인
           </div>
-          <div className={cn(
+          <div className={ cn(
             "flex w-full min-h-12 rounded-lg border gap-2.25 pl-3.25 pr-3.25 pb-3.5 pt-3.5",
-            "border-(--color-border-default) bg-(--color-bg-surface)"
-          )}>
+            "border-(--color-border-default) bg-(--color-bg-surface)",
+          ) }>
             <input
               type="password"
-              value={form.passwordConfirm}
-              onChange={(e) => handleChangeField("passwordConfirm", e.target.value)}
+              value={ form.passwordConfirm }
+              onChange={ (e) => handleChangeField("passwordConfirm", e.target.value) }
               placeholder="다시 입력"
-              className={cn(
+              className={ cn(
                 "box-border w-full",
-                "px-0.5 py-px",
+                "px-0.5 py-px focus:outline-none",
                 "text-[14px] font-normal leading-none tracking-normal",
-                "placeholder:text-(--color-text-tertiary)"
-              )}
+                "placeholder:text-(--color-text-tertiary)",
+              ) }
             />
           </div>
-          {showPasswordConfirmError && (
-            <div className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
+          { showPasswordConfirmError && (
+            <div
+              className="flex flex-col w-full px-1 font-normal text-[12px] text-(--color-danger-default)">
               비밀번호가 일치하지 않아요.
             </div>
-          )}
+          ) }
         </div>
         <button
           type="submit"
-          disabled={!canSubmit || isSubmitting}
-          className={cn(
+          disabled={ !canSubmit || signupMutation.isPending }
+          className={ cn(
             "flex w-full h-12 rounded-lg px-4 justify-center items-center shrink-0",
             "border border-(--color-bg-surface) bg-(--color-action-primary)",
             "font-bold text-(--color-bg-surface) text-[14px] cursor-pointer",
-            "disabled:cursor-not-allowed disabled:opacity-50"
-          )}
+            "disabled:cursor-not-allowed disabled:opacity-50",
+          ) }
         >
-          {isSubmitting ? "가입 중" : "가입하기"}
+          { signupMutation.isPending ? "가입 중" : "가입하기" }
         </button>
         <footer className="flex w-full items-center justify-center text-[13px] text-(--color-text-secondary)">
           이미 계정이 있나요? &nbsp;

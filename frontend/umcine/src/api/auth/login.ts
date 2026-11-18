@@ -1,4 +1,4 @@
-import {apiClient} from "../api-client";
+import { apiClient } from "../api-client.ts";
 
 export interface LoginRequest {
   email: string;
@@ -10,12 +10,11 @@ export interface LoginResponse {
   code: string;
   message: string;
   result: {
-    memberId: number;
-    email: string;
     nickname: string;
+    accessToken: string;
   };
 }
 
 export function login(body: LoginRequest) {
-  return apiClient.post("members", {json: body}).json<LoginResponse>();
+  return apiClient.post("auth/login", { json: body }).json<LoginResponse>();
 }

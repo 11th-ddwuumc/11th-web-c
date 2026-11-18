@@ -1,15 +1,19 @@
-import {MovieCard} from "../../components/movies/movie-card.tsx";
+import { MovieCard } from "../../components/movies/movie-card.tsx";
 import Footer from "../../components/movies/footer.tsx";
-import {cn} from "../../utils/cn.ts";
-import {useState} from "react";
-import {getMovies} from "../../api/movies/get-movies.ts";
-import {useQuery} from "@tanstack/react-query";
+import { cn } from "../../utils/cn.ts";
+import { useState } from "react";
+import { getMovies } from "../../api/movies/get-movies.ts";
+import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "../../stores/auth-store.ts";
+import { getMe } from "../../api/members/me.ts";
+import { getFavorites } from "../../api/favorites/get-favorites.ts";
+import { useFavoriteMutation } from "../../hooks/use-favorite-mutation.ts";
 
 export default function MovieListPage() {
-  const [page, setPage] = useState(1);
+  const [ page, setPage ] = useState(1);
   const moviesQuery = useQuery({
-    queryKey: ["movies", "list", {page}],
-    queryFn: () => getMovies({page}),
+    queryKey: [ "movies", "list", { page } ],
+    queryFn: () => getMovies({ page }),
   });
   const movies = moviesQuery.data?.results ?? [];
   const totalPages = moviesQuery.data?.total_pages ?? 0;
@@ -18,7 +22,7 @@ export default function MovieListPage() {
   const startPage = Math.floor((page - 1) / pageGroupSize) * pageGroupSize + 1;
 
   const pageNumbers = Array.from(
-    {length: Math.max(0, Math.min(pageGroupSize, totalPages - startPage + 1))},
+    { length: Math.max(0, Math.min(pageGroupSize, totalPages - startPage + 1)) },
     (_, index) => startPage + index,
   );
 
@@ -27,6 +31,53 @@ export default function MovieListPage() {
       return;
     }
     setPage(nextPage);
+  };
+
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  const meQuery = useQuery({
+    queryKey: [ "members", "me" ],
+    queryFn: getMe,
+    enabled: Boolean(accessToken),
+  });
+
+  const memberEmail = meQuery.data?.email;
+
+  const favoritesQuery = useQuery({
+    queryKey: [ "favorites", "member", memberEmail, "list" ],
+    queryFn: getFavorites,
+    enabled: Boolean(accessToken) && memberEmail !== undefined,
+  });
+
+  const favoriteMutation = useFavoriteMutation();
+
+  const bookmarkedMovieIds = new Set(
+    (favoritesQuery.data ?? []).map((favorite) => favorite.movieId),
+  );
+
+  const bookmarkDisabled =
+    Boolean(accessToken) && (
+      !memberEmail ||
+      !favoritesQuery.isSuccess ||
+      favoritesQuery.isFetching ||
+      favoriteMutation.isPending
+    );
+
+  const handleToggleBookmark = (movieId: number) => {
+    if (!accessToken) {
+      alert("로그인이 필요해요.");
+      return;
+    }
+
+    if (!memberEmail || bookmarkDisabled) {
+      return;
+    }
+
+    favoriteMutation.mutate({
+      movieId,
+      memberEmail,
+      wasFavorite: bookmarkedMovieIds.has(movieId),
+    });
   };
 
   const arrowClassName = cn(
@@ -42,105 +93,110 @@ export default function MovieListPage() {
   };
 
   return (
-    <main className={cn(
+    <main className={ cn(
       "min-h-[calc(100vh-90px)] w-full bg-(--color-bg-page) pb-14.25",
-    )}>
-      <div className={cn(
+    ) }>
+      <div className={ cn(
         "flex w-full flex-col gap-5 px-20 py-6",
         "max-[750px]:p-6",
         "max-[480px]:px-4 max-[480px]:py-6",
-      )}>
-        <h1 className={cn(
+      ) }>
+        <h1 className={ cn(
           "m-0 self-start",
           "text-[38px] leading-11 font-bold tracking-[-1.71px]",
           "text-(--color-text-primary)",
-        )}>영화 목록</h1>
-        {moviesQuery.isPending ? (
+        ) }>영화 목록</h1>
+        { moviesQuery.isPending ? (
           <p role="status" className="m-0 text-(--color-text-secondary)">
             영화 목록을 불러오는 중이에요.
           </p>
         ) : moviesQuery.isError ? (
           <p role="alert" className="m-0 text-(--color-text-primary)">
-            {moviesQuery.error.message}
+            { moviesQuery.error.message }
           </p>
         ) : movies.length === 0 ? (
           <p className="m-0 text-(--color-text-secondary)">
             표시할 영화가 없어요.
           </p>
         ) : (
-          <ul className={cn(
+          <ul className={ cn(
             "m-0 grid w-full list-none grid-cols-5 p-0",
             "gap-x-5 gap-y-6",
             "max-[1100px]:grid-cols-3",
             "max-[750px]:grid-cols-2",
             "max-[480px]:grid-cols-1",
-          )}>
-            {movies.map((movie) => (
-              <li key={movie.id}>
-                <MovieCard movie={movie}/>
+          ) }>
+            { movies.map((movie) => (
+              <li key={ movie.id }>
+                <MovieCard
+                  movie={ movie }
+                  isBookmarked={ Boolean(accessToken) && bookmarkedMovieIds.has(movie.id) }
+                  bookmarkDisabled={ bookmarkDisabled }
+                  onToggleBookmark={ () => handleToggleBookmark(movie.id) }
+                />
               </li>
-            ))}
+            )) }
           </ul>
-        )}
+        ) }
       </div>
-      {/*페이지네이션*/}
-      {!moviesQuery.isPending && !moviesQuery.isError && totalPages > 0 && (
+      {/*페이지네이션*/ }
+      { !moviesQuery.isPending && !moviesQuery.isError && totalPages > 0 && (
         <nav className="mt-4 flex w-full items-center justify-center gap-3 pb-12">
           <button
             type="button"
             aria-label="이전 페이지"
-            disabled={page <= 1}
-            onClick={() => handlePageChange(page - 1)}
-            className={arrowClassName}
+            disabled={ page <= 1 }
+            onClick={ () => handlePageChange(page - 1) }
+            className={ arrowClassName }
           >
             <span
               aria-hidden="true"
               className="block size-6 bg-current"
-              style={arrowMaskStyle}
+              style={ arrowMaskStyle }
             />
           </button>
 
           <div className="flex h-9 w-49 items-center gap-1">
-            {pageNumbers.map((pageNumber) => {
+            { pageNumbers.map((pageNumber) => {
               const isActive = page === pageNumber;
 
               return (
                 <button
-                  key={pageNumber}
+                  key={ pageNumber }
                   type="button"
-                  aria-label={`${pageNumber}페이지`}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={() => handlePageChange(pageNumber)}
-                  className={cn(
+                  aria-label={ `${ pageNumber }페이지` }
+                  aria-current={ isActive ? "page" : undefined }
+                  onClick={ () => handlePageChange(pageNumber) }
+                  className={ cn(
                     "flex size-9 shrink-0 items-center justify-center",
                     "cursor-pointer rounded-[7px] border-0 px-1.5 py-px",
                     "text-center text-[13px] leading-none font-bold tracking-normal",
                     isActive
                       ? "bg-(--color-text-primary) text-(--color-bg-surface)"
                       : "bg-transparent text-(--color-text-secondary)",
-                  )}
+                  ) }
                 >
-                  {pageNumber}
+                  { pageNumber }
                 </button>
               );
-            })}
+            }) }
           </div>
 
           <button
             type="button"
             aria-label="다음 페이지"
-            disabled={page >= totalPages}
-            onClick={() => handlePageChange(page + 1)}
-            className={arrowClassName}
+            disabled={ page >= totalPages }
+            onClick={ () => handlePageChange(page + 1) }
+            className={ arrowClassName }
           >
             <span
               aria-hidden="true"
               className="block size-6 rotate-180 bg-current"
-              style={arrowMaskStyle}
+              style={ arrowMaskStyle }
             />
           </button>
         </nav>
-      )}
+      ) }
       <div className="fixed bottom-0 left-0 z-20 w-full">
         <Footer/>
       </div>

@@ -1,26 +1,74 @@
-import {Link, useParams} from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import Footer from "../../components/movies/footer.tsx";
-import {cn} from "../../utils/cn.ts";
-import {useState} from "react";
-import {BookmarkButton} from "../../components/bookmark-button.tsx";
-import {getTmdbBackdropUrl, getTmdbPosterUrl} from "../../utils/movies/tmdb-image.ts";
-import {getMovieDetail} from "../../api/movies/get-movie-detail.ts";
-import {useQuery} from "@tanstack/react-query";
-import {getMovieDetailErrorMessage} from "../../utils/movies/get-movie-detail-error-message.ts";
+import { cn } from "../../utils/cn.ts";
+import { useState } from "react";
+import { BookmarkButton } from "../../components/bookmark-button.tsx";
+import { getTmdbBackdropUrl, getTmdbPosterUrl } from "../../utils/movies/tmdb-image.ts";
+import { getMovieDetail } from "../../api/movies/get-movie-detail.ts";
+import { useQuery } from "@tanstack/react-query";
+import { getMovieDetailErrorMessage } from "../../utils/movies/get-movie-detail-error-message.ts";
+import { getFavorite } from "../../api/favorites/get-favorite.ts";
+import { useAuthStore } from "../../stores/auth-store.ts";
+import { getMe } from "../../api/members/me.ts";
+import { useFavoriteMutation } from "../../hooks/use-favorite-mutation.ts";
 
 export function MovieDetailPage() {
-  const [rating, setRating] = useState(0);
+  const [ rating, setRating ] = useState(0);
 
-  const {movieId: movieIdParam} = useParams({from: "/movies/$movieId"});
+  const { movieId: movieIdParam } = useParams({ from: "/movies/$movieId" });
   const movieId = Number(movieIdParam);
   const isValidMovieId = Number.isInteger(movieId) && movieId > 0;
 
   const movieDetailQuery = useQuery({
-    queryKey: ["movies", "detail", movieId],
+    queryKey: [ "movies", "detail", movieId ],
     queryFn: () => getMovieDetail(movieId),
     enabled: isValidMovieId,
     staleTime: 30 * 1000,
   });
+
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  const meQuery = useQuery({
+    queryKey: [ "members", "me" ],
+    queryFn: getMe,
+    enabled: Boolean(accessToken),
+  });
+
+  const memberEmail = meQuery.data?.email;
+
+  const favoriteQuery = useQuery({
+    queryKey: [ "favorites", "member", memberEmail, "movie", movieId ],
+    queryFn: () => getFavorite(movieId),
+    enabled:
+      Boolean(accessToken) &&
+      memberEmail !== undefined &&
+      isValidMovieId,
+    staleTime: 30 * 1000,
+  });
+
+  const favoriteMutation = useFavoriteMutation();
+
+  const handleToggleFavorite = () => {
+    if (!accessToken) {
+      alert("로그인이 필요해요.");
+      return;
+    }
+
+    if (!memberEmail ||
+      !isValidMovieId ||
+      !favoriteQuery.isSuccess ||
+      favoriteQuery.isFetching ||
+      favoriteMutation.isPending
+    ) {
+      return;
+    }
+
+    favoriteMutation.mutate({
+      movieId,
+      memberEmail,
+      wasFavorite: favoriteQuery.data.result.isFavorite,
+    });
+  };
 
   const statusMessage = !isValidMovieId
     ? "올바르지 않은 영화 번호예요."
@@ -38,7 +86,7 @@ export function MovieDetailPage() {
           role="status"
           className="m-0 text-[28px] font-bold text-(--color-text-primary)"
         >
-          {statusMessage ?? "영화 정보를 불러오는 중이에요."}
+          { statusMessage ?? "영화 정보를 불러오는 중이에요." }
         </p>
       </main>
     );
@@ -50,7 +98,7 @@ export function MovieDetailPage() {
 
   const runtimeText =
     typeof movie.runtime === "number"
-      ? `${Math.floor(movie.runtime / 60)}시간 ${movie.runtime % 60}분`
+      ? `${ Math.floor(movie.runtime / 60) }시간 ${ movie.runtime % 60 }분`
       : "상영 시간 정보가 없어요.";
 
   const posterUrl = getTmdbPosterUrl(movie.poster_path);
@@ -59,18 +107,18 @@ export function MovieDetailPage() {
   return (
     <div className="flex min-h-[calc(100vh-90px)] w-full flex-col bg-(--color-bg-page) pb-59.5">
 
-      {/* detail-stage */}
+      {/* detail-stage */ }
       <section className="relative w-full h-90 overflow-hidden text-(--color-bg-surface)">
-        {/* 배경 이미지 */}
+        {/* 배경 이미지 */ }
         <img
-          src={backdropUrl}
+          src={ backdropUrl }
           alt=""
           className="absolute inset-0 z-0 h-full w-full object-cover object-center"
         />
 
-        {/* Frame 2 */}
-        <div className={"relative z-10 flex h-full w-full flex-col justify-between px-20 py-6"}>
-          {/* button.back-link */}
+        {/* Frame 2 */ }
+        <div className={ "relative z-10 flex h-full w-full flex-col justify-between px-20 py-6" }>
+          {/* button.back-link */ }
           <Link
             to="/"
             className="flex items-center w-fit h-fit gap-1 cursor-pointer"
@@ -84,94 +132,109 @@ export function MovieDetailPage() {
               </span>
           </Link>
 
-          {/* div.detail-copy */}
+          {/* div.detail-copy */ }
           <div className="flex flex-col w-200 gap-2">
-            {/* Title */}
+            {/* Title */ }
             <h1 className="m-0 text-[46px] leading-[49.68px] font-bold tracking-[-0.023em]">
-              {movie?.title}
+              { movie?.title }
             </h1>
 
-            {/* Original title */}
+            {/* Original title */ }
             <div className="w-full text-[14px] font-normal">
-              {movie?.original_title}
+              { movie?.original_title }
             </div>
 
-            {/* detail-meta */}
+            {/* detail-meta */ }
             <div className="flex w-full gap-2 text-[13px] font-bold">
-              <span>{movie?.release_date}</span>
-              <span>{genresText}</span>
-              <span>{runtimeText}</span>
+              <span>{ movie?.release_date }</span>
+              <span>{ genresText }</span>
+              <span>{ runtimeText }</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* main.container */}
+      {/* main.container */ }
       <main className="flex flex-row w-full px-20 py-6 gap-8">
 
-        {/* poster */}
-        <div className={cn(
+        {/* poster */ }
+        <div className={ cn(
           "h-71.5 w-50 shrink-0 overflow-hidden rounded-[10px]",
           "shadow-[0px_12px_30px_0px_#0C0F141F]",
-        )}>
+        ) }>
           <img
-            src={posterUrl}
+            src={ posterUrl }
             alt=""
             className="h-full w-full object-cover object-center"
           />
         </div>
 
-        {/* section.synopsis */}
+        {/* section.synopsis */ }
         <section className="flex flex-col w-full gap-3">
-          <h2 className={cn(
+          <h2 className={ cn(
             "m-0 w-full text-(--color-text-primary)",
-            "text-[21px] font-bold tracking-[-0.63px] leading-[100%]"
-          )}>
-            {movie?.tagline}
+            "text-[21px] font-bold tracking-[-0.63px] leading-[100%]",
+          ) }>
+            { movie?.tagline }
           </h2>
-          <p className={cn(
+          <p className={ cn(
             "w-full m-0 text-(--color-text-secondary)",
-            "text-[14px] font-normal leading-6"
-          )}>
-            {movie?.overview}
+            "text-[14px] font-normal leading-6",
+          ) }>
+            { movie?.overview }
           </p>
 
-          {/* bookmark button */}
-          <BookmarkButton variant={"detail"} movieId={movie?.id}/>
+          {/* bookmark button */ }
+          <BookmarkButton
+            variant="detail"
+            isBookmarked={
+              Boolean(accessToken) &&
+              favoriteQuery.data?.result.isFavorite === true
+            }
+            disabled={
+              Boolean(accessToken) && (
+                !memberEmail ||
+                !favoriteQuery.isSuccess ||
+                favoriteQuery.isFetching ||
+                favoriteMutation.isPending
+              )
+            }
+            onClick={ handleToggleFavorite }
+          />
         </section>
 
-        {/* aside.rating-panel */}
-        <aside className={cn(
+        {/* aside.rating-panel */ }
+        <aside className={ cn(
           "w-90 h-fit shrink-0 border-l border-(--color-border-default)",
-          "flex flex-col pb-10.25 pl-7.5 gap-2"
-        )}>
-          <h2 className={cn(
+          "flex flex-col pb-10.25 pl-7.5 gap-2",
+        ) }>
+          <h2 className={ cn(
             "m-0 w-full text-(--color-text-primary) font-bold",
-            "text-[21px] tracking-[-0.63px] leading-[100%]"
-          )}>
+            "text-[21px] tracking-[-0.63px] leading-[100%]",
+          ) }>
             내 평점
           </h2>
-          <p className={cn(
+          <p className={ cn(
             "w-full m-0 leading-[100%]",
-            "text-(--color-text-tertiary) font-normal text-[12px]"
-          )}>
+            "text-(--color-text-tertiary) font-normal text-[12px]",
+          ) }>
             별점은 필수, 후기는 선택이에요.
           </p>
 
-          {/* 별점 버튼 */}
+          {/* 별점 버튼 */ }
           <div className="flex w-full gap-1">
-            {Array.from({length: 5}, (_, index) => {
+            { Array.from({ length: 5 }, (_, index) => {
               const score = index + 1;
               const isSelected = score <= rating;
 
               return (
                 <button
-                  key={score}
+                  key={ score }
                   type="button"
-                  aria-label={`${score}점`}
-                  aria-pressed={rating === score}
-                  onClick={() => setRating(score)}
-                  className={cn(
+                  aria-label={ `${ score }점` }
+                  aria-pressed={ rating === score }
+                  onClick={ () => setRating(score) }
+                  className={ cn(
                     "flex size-9.5 items-center justify-center rounded-lg",
                     "border border-(--color-border-default)",
                     "bg-(--color-bg-surface)",
@@ -179,7 +242,7 @@ export function MovieDetailPage() {
                     isSelected
                       ? "text-yellow-400"
                       : "text-(--color-text-secondary)",
-                  )}
+                  ) }
                 >
                   <svg aria-hidden="true" width="24" height="24" viewBox="176 32 24 24" fill="none">
                     <path
@@ -189,25 +252,25 @@ export function MovieDetailPage() {
                   </svg>
                 </button>
               );
-            })}
+            }) }
           </div>
 
           <textarea
             placeholder="영화를 보고 느낀 점을 남겨보세요."
-            className={cn(
+            className={ cn(
               "h-25.5 w-full resize-none rounded-lg px-3 py-4",
               "border border-(--color-border-default)",
               "bg-(--color-bg-surface)",
               "text-[13px] font-normal leading-[19.5px]",
               "placeholder:text-(--color-text-tertiary)",
-            )}/>
+            ) }/>
 
-          <button className={cn(
+          <button className={ cn(
             "flex items-center justify-center w-full h-10.5 px-4 ",
             "rounded-lg bg-(--color-text-primary)",
             "text-(--color-bg-surface) text-[14px] font-extrabold",
-            "cursor-pointer"
-          )}>
+            "cursor-pointer",
+          ) }>
             평점 저장
           </button>
 
