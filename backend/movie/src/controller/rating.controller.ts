@@ -1,4 +1,6 @@
-import type {AuthenticatedRequest} from "../types/authenticated-request.js";
+import type { ApiResponse } from "../types/api-response.js";
+import type { RatingResponseDto } from "../dto/rating-response.dto.js";
+import type { AuthenticatedRequest } from "../types/authenticated-request.js";
 // src/controller/rating.controller.ts
 import {
   Body,
@@ -14,10 +16,10 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import {RatingService} from "../service/rating.service.js";
-import {CreateRatingDto} from "../dto/create-rating.dto.js";
-import {UpdateRatingDto} from "../dto/update-rating.dto.js";
-import {AuthGuard} from "../guard/auth.guard.js";
+import { RatingService } from "../service/rating.service.js";
+import { CreateRatingDto } from "../dto/create-rating.dto.js";
+import { UpdateRatingDto } from "../dto/update-rating.dto.js";
+import { AuthGuard } from "../guard/auth.guard.js";
 
 @Controller()
 export class RatingController {
@@ -34,7 +36,10 @@ export class RatingController {
   @Post("ratings")
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.CREATED)
-  async create(@Req() request: AuthenticatedRequest, @Body() dto: CreateRatingDto) {
+  async create(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateRatingDto,
+  ): Promise<ApiResponse<RatingResponseDto>> {
     const memberId = request.memberId;
 
     const result = await this.ratingService.create(memberId, dto);
@@ -54,7 +59,7 @@ export class RatingController {
     @Req() request: AuthenticatedRequest,
     @Param("ratingId", ParseIntPipe) ratingId: number,
     @Body() dto: UpdateRatingDto,
-  ) {
+  ): Promise<ApiResponse<RatingResponseDto>> {
     const memberId = request.memberId;
 
     const result = await this.ratingService.update(memberId, ratingId, dto);
@@ -72,7 +77,7 @@ export class RatingController {
   async delete(
     @Req() request: AuthenticatedRequest,
     @Param("ratingId", ParseIntPipe) ratingId: number,
-  ) {
+  ): Promise<ApiResponse<null>> {
     const memberId = request.memberId;
 
     await this.ratingService.delete(memberId, ratingId);
