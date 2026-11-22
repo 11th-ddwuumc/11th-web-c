@@ -11,7 +11,7 @@ export default async function Page({ params }: { params: Promise<{ movieId: stri
   }
   const client = new QueryClient();
   try {
-    await client.fetchQuery({
+    await client.query({
       queryKey: ["movies", "detail", movieId],
       queryFn: () => getServerMovieDetail(movieId),
     });

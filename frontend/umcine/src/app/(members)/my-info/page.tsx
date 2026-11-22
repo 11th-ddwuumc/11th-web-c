@@ -9,13 +9,13 @@ export default async function Page() {
   const session = await requireSession();
   const token = (await getToken())!;
   const client = new QueryClient();
-  const favorites = await client.fetchQuery({
+  const favorites = await client.query({
     queryKey: ["favorites", "member", session.member.email, "list"],
     queryFn: async () => (await backendJson<{ result: FavoriteMovieInfo[] }>("favorites", token)).result,
   });
-  await Promise.all(favorites.slice(0, 5).map((favorite) => client.prefetchQuery({
+  await Promise.all(favorites.slice(0, 5).map((favorite) => client.query({
     queryKey: ["movies", "detail", favorite.movieId],
     queryFn: () => getServerMovieDetail(favorite.movieId),
-  })));
+  }).catch(() => undefined)));
   return <HydrationBoundary state={dehydrate(client)}><MyInfoPage /></HydrationBoundary>;
 }

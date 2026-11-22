@@ -8,7 +8,7 @@ export default async function Page({ searchParams }: {
   const value = (await searchParams).query;
   const query = (typeof value === "string" ? value : "").trim();
   const client = new QueryClient();
-  if (query) await client.fetchQuery({
+  if (query) await client.query({
     queryKey: ["movies", "search", { query }],
     queryFn: () => searchServerMovies(query),
   });
