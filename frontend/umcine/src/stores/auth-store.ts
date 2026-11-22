@@ -1,21 +1,26 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+"use client";
 
-interface AuthStore {
-  accessToken: string | null;
-  setAccessToken: (accessToken: string | null) => void;
+import { createContext, useContext } from "react";
+import { useStore } from "zustand";
+import { createStore } from "zustand/vanilla";
+import type { Session } from "@/types/session";
+
+interface AuthState {
+  session: Session | null;
+  setSession: (session: Session | null) => void;
 }
 
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      setAccessToken: (accessToken) => set({ accessToken }),
-    }),
-    {
-      name: "umcine-auth-store",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ accessToken: state.accessToken }),
-    },
-  ),
-);
+export function createAuthStore(session: Session | null) {
+  return createStore<AuthState>()((set) => ({
+    session,
+    setSession: (session) => set({ session }),
+  }));
+}
+
+export const AuthStoreContext = createContext<ReturnType<typeof createAuthStore> | null>(null);
+
+export function useAuthStore<T>(selector: (state: AuthState) => T): T {
+  const store = useContext(AuthStoreContext);
+  if (!store) throw new Error("인증 Provider가 필요해요.");
+  return useStore(store, selector);
+}

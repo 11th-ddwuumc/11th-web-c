@@ -1,16 +1,20 @@
-import { Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "../../utils/cn.ts";
-import { useAuthStore } from "../../stores/auth-store.ts";
+import { useAuthStore } from "../../stores/auth-store";
 import { useQuery } from "@tanstack/react-query";
 import { getMe } from "../../api/members/me.ts";
 
 export default function Header() {
+  const pathname = usePathname();
 
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const isAuthenticated = useAuthStore((state) => state.session !== null);
   const meQuery = useQuery({
     queryKey: [ "members", "me" ],
     queryFn: getMe,
-    enabled: Boolean(accessToken), // 토큰이 있을 때만 조회
+    enabled: isAuthenticated, // 토큰이 있을 때만 조회
     staleTime: 5 * 60 * 1000, // 5분
     retry: false,
   });
@@ -22,7 +26,7 @@ export default function Header() {
       "px-20 py-6",
     ) }>
       <div className={ cn("flex items-center gap-10.5") }>
-        <Link className={ cn("flex items-center gap-2.5 text-inherit no-underline") } to="/">
+        <Link className={ cn("flex items-center gap-2.5 text-inherit no-underline") } href="/">
           <div className={ cn(
             "flex size-8 flex-col items-center justify-center",
             "rounded-lg border-2 border-(--color-text-primary)",
@@ -36,51 +40,31 @@ export default function Header() {
         </Link>
 
         <nav className={ cn("flex items-center gap-7.5") }>
-          <Link
-            to="/"
-            activeOptions={ { exact: true } }
-            className={ cn(
-              "text-center text-[14px] font-bold align-middle",
-            ) }
-            activeProps={ {
-              className: "text-(--color-text-primary) underline decoration-solid",
-            } }
-            inactiveProps={ {
-              className: "text-(--color-text-secondary) no-underline",
-            } }
-          >영화</Link>
-          <Link
-            to="/search"
-            activeOptions={ { exact: true } }
-            className={ cn(
-              "text-center text-[14px] font-bold align-middle",
-            ) }
-            activeProps={ {
-              className: "text-(--color-text-primary) underline decoration-solid",
-            } }
-            inactiveProps={ {
-              className: "text-(--color-text-secondary) no-underline",
-            } }
-          >검색</Link>
-          <Link
-            to="/my-info"
-            activeOptions={ { exact: true } }
-            className={ cn(
-              "text-center text-[14px] font-bold align-middle",
-            ) }
-            activeProps={ {
-              className: "text-(--color-text-primary) underline decoration-solid",
-            } }
-            inactiveProps={ {
-              className: "text-(--color-text-secondary) no-underline",
-            } }
-          >내 정보</Link>
+          {[
+            { href: "/", label: "영화" },
+            { href: "/search", label: "검색" },
+            { href: "/my-info", label: "내 정보" },
+          ].map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              aria-current={pathname === href ? "page" : undefined}
+              className={cn(
+                "text-center text-[14px] font-bold align-middle",
+                pathname === href
+                  ? "text-(--color-text-primary) underline decoration-solid"
+                  : "text-(--color-text-secondary) no-underline",
+              )}
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
       </div>
 
       <div className={ cn("flex items-center gap-2.5") }>
         <Link
-          to="/search"
+          href="/search"
           className={ cn(
             "flex size-10.5 flex-col items-center justify-center",
             "rounded-lg border border-(--color-border-default)",
@@ -96,7 +80,7 @@ export default function Header() {
           </svg>
         </Link>
 
-        { !accessToken ? (
+        { !isAuthenticated ? (
           <Link
             className={ cn(
               "flex justify-center items-center h-10.5 w-17.75 px-4 py-0",
@@ -105,7 +89,7 @@ export default function Header() {
               "text-center text-[14px] font-extrabold align-middle",
               "cursor-pointer text-(--color-bg-surface)",
             ) }
-            to="/login"
+            href="/login"
           >
             로그인
           </Link>
@@ -120,7 +104,7 @@ export default function Header() {
               "text-center text-[14px] font-extrabold align-middle",
               "cursor-pointer text-(--color-bg-surface)",
             ) }
-            to="/my-info"
+            href="/my-info"
           >
             마이페이지
           </Link>

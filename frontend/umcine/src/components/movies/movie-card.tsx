@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import Link from "next/link";
 import { cn } from "../../utils/cn.ts";
 import { BookmarkButton } from "../bookmark-button.tsx";
 import type { TmdbMovieListItem } from "../../api/movies/models.ts";
@@ -23,8 +23,7 @@ export function MovieCard({
   return (
     <article className={ cn("relative flex flex-col gap-1") }>
       <Link
-        to="/movies/$movieId"
-        params={ { movieId: String(movie.id) } }
+        href={ `/movies/${ movie.id }` }
         className={ cn("flex flex-col gap-1") }
       >
         <div className={ cn(

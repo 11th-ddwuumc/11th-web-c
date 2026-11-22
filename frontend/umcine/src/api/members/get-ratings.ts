@@ -1,6 +1,6 @@
-import { apiClient } from "../api-client";
+import { authApi } from "../auth-api";
 import type { RatingResponse } from "../ratings/models.ts";
 
 export async function getRatings(memberId: number) {
-  return apiClient.get(`members/${ memberId }/ratings`).json<RatingResponse[]>();
+  return authApi.get(`members/${ memberId }/ratings`).json<RatingResponse[]>();
 }
