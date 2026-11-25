@@ -1,11 +1,17 @@
-import { useParams } from "@tanstack/react-router";
+import { useState, type ComponentProps } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { movieDetailOptions } from "../../api/movies/movie-query-options";
 
 import RequestError from "../../components/request-error";
 
-import { useBookmarkStore } from "../../stores/bookmark-store";
+import { getFavorite } from "../../api/favorites";
+import { getMemberRatings } from "../../api/ratings";
+import { getMe } from "../../api/members/me";
+import { favoriteKeys, useFavoriteMutation } from "../../hooks/use-favorite-mutation";
+import { useRatingMutations } from "../../hooks/use-rating-mutations";
+import { useAuthStore } from "../../stores/auth-store";
 
 import { getMovieDetailErrorMessage } from "../../utils/movies/get-movie-detail-error-message";
 import {
@@ -24,11 +30,33 @@ export function MovieDetailPage() {
 
   const movieDetailQuery = useQuery(movieDetailOptions(movieId));
 
-  const bookmarkedMovieIds = useBookmarkStore(
-    (state) => state.bookmarkedMovieIds,
-  );
-
-  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const meQuery = useQuery({
+    queryKey: ["members", "me"], queryFn: getMe,
+    enabled: Boolean(accessToken), staleTime: 5 * 60 * 1000, retry: false,
+  });
+  const memberId = meQuery.data?.memberId ?? meQuery.data?.id;
+  const favoriteQuery = useQuery({
+    queryKey: favoriteKeys.detail(movieId), queryFn: () => getFavorite(movieId),
+    enabled: Boolean(accessToken) && isValidMovieId, retry: false,
+  });
+  const ratingsQuery = useQuery({
+    queryKey: ["members", memberId, "ratings"],
+    queryFn: () => getMemberRatings(memberId!),
+    enabled: Boolean(accessToken) && memberId !== undefined, retry: false,
+  });
+  const favoriteMutation = useFavoriteMutation();
+  const ratingMutations = useRatingMutations(memberId);
+  const [score, setScore] = useState("5");
+  const myRating = ratingsQuery.data?.find((rating) => rating.movieId === movieId);
+  const validScore = Number.isInteger(Number(score)) && Number(score) >= 1 && Number(score) <= 5;
+  const ratingPending = ratingMutations.create.isPending || ratingMutations.update.isPending || ratingMutations.remove.isPending;
+  const handleRatingSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = (event) => {
+    event.preventDefault();
+    if (!validScore || ratingPending || !memberId) return;
+    if (myRating) ratingMutations.update.mutate({ ratingId: myRating.ratingId, score: Number(score) });
+    else ratingMutations.create.mutate({ movieId, score: Number(score) });
+  };
 
   // 영화 ID가 유효하지 않은 경우
   if (!isValidMovieId) {
@@ -87,7 +115,7 @@ export function MovieDetailPage() {
       ? `${Math.floor(movie.runtime / 60)}시간 ${movie.runtime % 60}분`
       : "상영 시간 정보가 없어요.";
 
-  const isBookmarked = bookmarkedMovieIds.includes(movie.id);
+  const isBookmarked = favoriteQuery.data ?? false;
 
   return (
     <main className="mx-auto w-[calc(100%-80px)] max-w-[1200px] py-8 pb-[100px]">
@@ -124,14 +152,16 @@ export function MovieDetailPage() {
           <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
             <h1 className="m-0 text-[32px] font-bold">{movie.title}</h1>
 
-            <button
-              type="button"
-              aria-pressed={isBookmarked}
-              onClick={() => toggleBookmark(movie.id)}
-              className="rounded-lg bg-[#2563eb] px-4 py-3 text-[14px] font-semibold text-white"
-            >
-              {isBookmarked ? "북마크 해제" : "북마크 추가"}
-            </button>
+            {accessToken ? (
+              <button
+                type="button" aria-pressed={isBookmarked}
+                disabled={favoriteQuery.isPending || favoriteMutation.isPending}
+                onClick={() => favoriteMutation.mutate({ movieId, isFavorite: isBookmarked })}
+                className="rounded-lg bg-[#2563eb] px-4 py-3 text-[14px] font-semibold text-white"
+              >
+                {favoriteMutation.isPending ? "처리 중" : isBookmarked ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              </button>
+            ) : <Link to="/login">즐겨찾기는 로그인 후 이용할 수 있어요.</Link>}
           </div>
 
           <p className="mb-6 text-[16px] text-[#6b7280]">
@@ -162,6 +192,27 @@ export function MovieDetailPage() {
           <p className="whitespace-pre-line text-[15px] leading-7 text-[#4b5563]">
             {movie.overview || "줄거리 정보가 없어요."}
           </p>
+          {accessToken && favoriteQuery.isError && <p role="alert">즐겨찾기를 불러오지 못했어요. <button type="button" onClick={() => void favoriteQuery.refetch()}>다시 시도</button></p>}
+          {favoriteMutation.isError && <p role="alert">즐겨찾기 변경에 실패했어요.</p>}
+
+          <section className="mt-8" aria-label="내 평점">
+            <h2 className="text-[20px] font-bold">내 평점</h2>
+            {!accessToken ? <Link to="/login">로그인하고 평점 남기기</Link>
+              : meQuery.isPending || (memberId && ratingsQuery.isPending) ? <p>평점을 불러오는 중이에요.</p>
+              : meQuery.isError ? <p role="alert">회원 정보를 불러오지 못했어요.</p>
+              : !memberId ? <p role="alert">회원 번호가 조회 응답에 없어 평점 요청을 보낼 수 없어요.</p>
+              : ratingsQuery.isError ? <p role="alert">평점을 불러오지 못했어요. <button type="button" onClick={() => void ratingsQuery.refetch()}>다시 시도</button></p>
+              : <>
+                  <p>{myRating ? `현재 평점: ${myRating.score}점` : "아직 이 영화에 남긴 평점이 없어요."}</p>
+                  <form onSubmit={handleRatingSubmit}>
+                    <label htmlFor="rating-score">평점 (1~5점)</label>{" "}
+                    <input id="rating-score" type="number" min="1" max="5" step="1" value={score} onChange={(event) => setScore(event.target.value)} />{" "}
+                    <button type="submit" disabled={!validScore || ratingPending}>{myRating ? "평점 수정" : "평점 등록"}</button>
+                    {myRating && <button type="button" disabled={ratingPending} onClick={() => ratingMutations.remove.mutate(myRating.ratingId)}>평점 삭제</button>}
+                  </form>
+                  {(ratingMutations.create.isError || ratingMutations.update.isError || ratingMutations.remove.isError) && <p role="alert">평점 변경에 실패했어요.</p>}
+                </>}
+          </section>
         </section>
       </div>
     </main>

@@ -2,7 +2,7 @@ import { useRef, useState, type ComponentProps } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { checkEmailDuplicate } from "../../api/members/check-email-duplicate";
 import { checkNicknameDuplicate } from "../../api/members/check-nickname-duplicate";
-import { signup } from "../../api/members/signup";
+import { useSignupMutation } from "../../hooks/use-signup-mutation";
 import {
   EMAIL_REGEX,
   PASSWORD_REGEX,
@@ -16,13 +16,16 @@ const DEFAULT_FORM = {
   password: "",
   passwordConfirm: "",
 };
+
 type Field = keyof typeof DEFAULT_FORM;
 type DuplicateField = "email" | "nickname";
+
 type CheckState = {
   isChecking: boolean;
   isAvailable: boolean;
   message: string;
 };
+
 const EMPTY_CHECK: CheckState = {
   isChecking: false,
   isAvailable: false,
@@ -31,15 +34,21 @@ const EMPTY_CHECK: CheckState = {
 
 export function SignupPage() {
   const navigate = useNavigate();
+  const signupMutation = useSignupMutation();
+
   const [form, setForm] = useState(DEFAULT_FORM);
   const [checks, setChecks] = useState({
     email: EMPTY_CHECK,
     nickname: EMPTY_CHECK,
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
-  // 상태 반영 전 연속 클릭까지 막는 요청 잠금입니다.
-  const locks = useRef({ email: false, nickname: false, submit: false });
+
+  // mutation 상태가 화면에 반영되기 전의 연속 클릭도 막습니다.
+  const locks = useRef({
+    email: false,
+    nickname: false,
+    submit: false,
+  });
 
   const valid = {
     email: EMAIL_REGEX.test(form.email.trim()),
@@ -48,6 +57,7 @@ export function SignupPage() {
     passwordConfirm:
       form.passwordConfirm.length > 0 && form.password === form.passwordConfirm,
   };
+
   const canSubmit =
     Object.values(valid).every(Boolean) &&
     checks.email.isAvailable &&
@@ -57,30 +67,39 @@ export function SignupPage() {
 
   function handleChangeField(key: Field, value: string) {
     if (locks.current.submit) return;
+
     if (key === "email" || key === "nickname") {
       if (locks.current[key]) return;
       setChecks((prev) => ({ ...prev, [key]: { ...EMPTY_CHECK } }));
     }
+
     setSubmitMessage("");
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleCheckDuplicate(key: DuplicateField) {
     if (!valid[key] || locks.current[key] || locks.current.submit) return;
+
     locks.current[key] = true;
+
     const label = key === "email" ? "이메일" : "닉네임";
     const value = form[key].trim();
+
     setChecks((prev) => ({
       ...prev,
       [key]: { ...EMPTY_CHECK, isChecking: true },
     }));
+
     try {
       const response =
         key === "email"
           ? await checkEmailDuplicate(value)
           : await checkNicknameDuplicate(value);
-      if (typeof response.available !== "boolean")
+
+      if (typeof response.available !== "boolean") {
         throw new Error("응답 형식 오류");
+      }
+
       setChecks((prev) => ({
         ...prev,
         [key]: {
@@ -105,39 +124,53 @@ export function SignupPage() {
     }
   }
 
-  // 설치된 React 타입에서 onSubmit의 이벤트 타입을 추론합니다.
-  const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = async (
+  const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = (
     event,
   ) => {
     event.preventDefault();
-    if (!canSubmit || locks.current.submit) return;
+
+    if (!canSubmit || signupMutation.isPending || locks.current.submit) {
+      return;
+    }
+
     locks.current.submit = true;
-    setIsSubmitting(true);
     setSubmitMessage("");
-    try {
-      const response = await signup({
+
+    signupMutation.mutate(
+      {
         email: form.email.trim(),
         nickname: form.nickname.trim(),
         password: form.password,
-      });
-      // HTTP 200이어도 서버의 업무 처리 결과가 실패일 수 있습니다.
-      if (!response.isSuccess) {
-        setSubmitMessage(response.message || "회원가입에 실패했어요.");
-        setChecks({ email: { ...EMPTY_CHECK }, nickname: { ...EMPTY_CHECK } });
-        return;
-      }
-      window.alert(response.message || "회원가입이 완료됐어요.");
-      await navigate({ to: "/login" });
-    } catch {
-      setSubmitMessage(
-        "회원가입에 실패했어요. 입력값과 서버 상태를 확인해 주세요.",
-      );
-      // 확인 후 다른 사람이 가입했을 가능성도 있어 다시 확인합니다.
-      setChecks({ email: { ...EMPTY_CHECK }, nickname: { ...EMPTY_CHECK } });
-    } finally {
-      locks.current.submit = false;
-      setIsSubmitting(false);
-    }
+      },
+      {
+        onSuccess: async (response) => {
+          // HTTP 요청은 성공했어도 서버의 회원가입 처리 결과는 실패일 수 있습니다.
+          if (!response.isSuccess) {
+            setSubmitMessage(response.message || "회원가입에 실패했어요.");
+            setChecks({
+              email: { ...EMPTY_CHECK },
+              nickname: { ...EMPTY_CHECK },
+            });
+            return;
+          }
+
+          window.alert(response.message || "회원가입이 완료됐어요.");
+          await navigate({ to: "/login" });
+        },
+        onError: () => {
+          setSubmitMessage(
+            "회원가입에 실패했어요. 입력값과 서버 상태를 확인해 주세요.",
+          );
+          setChecks({
+            email: { ...EMPTY_CHECK },
+            nickname: { ...EMPTY_CHECK },
+          });
+        },
+        onSettled: () => {
+          locks.current.submit = false;
+        },
+      },
+    );
   };
 
   return (
@@ -145,8 +178,9 @@ export function SignupPage() {
       <section className="w7-card">
         <h1>회원가입</h1>
         <p>정보를 입력하고 이메일과 닉네임 중복을 확인해 주세요.</p>
+
         <form onSubmit={handleSubmit} noValidate>
-          <fieldset disabled={isSubmitting}>
+          <fieldset disabled={signupMutation.isPending}>
             <label htmlFor="signup-email">이메일</label>
             <div className="w7-row">
               <input
@@ -249,18 +283,21 @@ export function SignupPage() {
                 ? "비밀번호가 일치하지 않아요."
                 : ""}
             </p>
+
             <p role="status" className="w7-error">
               {submitMessage}
             </p>
+
             <button
               className="w7-primary"
               type="submit"
-              disabled={!canSubmit || isSubmitting}
+              disabled={!canSubmit || signupMutation.isPending}
             >
-              {isSubmitting ? "가입 중" : "가입하기"}
+              {signupMutation.isPending ? "가입 중" : "가입하기"}
             </button>
           </fieldset>
         </form>
+
         <p>
           이미 계정이 있나요? <Link to="/login">로그인</Link>
         </p>
