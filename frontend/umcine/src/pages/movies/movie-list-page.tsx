@@ -3,16 +3,39 @@ import Pagination from "../../components/pagination";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMovies } from "../../api/movies/get-movies";
-import { useBookmarkStore } from "../../stores/bookmark-store";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  useAddFavoriteMutation,
+  useFavoritesQuery,
+  useRemoveFavoriteMutation,
+} from "../../hooks/use-favorites";
+import { useAuthStore } from "../../stores/auth-store";
 import { getTmdbPosterUrl } from "../../utils/movies/tmdb-image";
 
 export function MovieListPage() {
   const [page, setPage] = useState(1);
 
-  const bookmarkedMovieIds = useBookmarkStore(
-    (state) => state.bookmarkedMovieIds,
-  );
-  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+  const navigate = useNavigate();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const favoritesQuery = useFavoritesQuery();
+  const addFavoriteMutation = useAddFavoriteMutation();
+  const removeFavoriteMutation = useRemoveFavoriteMutation();
+  const bookmarkedMovieIds = (favoritesQuery.data ?? []).map((favorite) => favorite.movieId);
+
+  const toggleBookmark = (movieId: number) => {
+    if (!accessToken) {
+      alert("로그인이 필요해요.");
+      navigate({ to: "/login" });
+      return;
+    }
+    if (addFavoriteMutation.isPending || removeFavoriteMutation.isPending) return;
+
+    if (bookmarkedMovieIds.includes(movieId)) {
+      removeFavoriteMutation.mutate(movieId);
+    } else {
+      addFavoriteMutation.mutate(movieId);
+    }
+  };
 
   const moviesQuery = useQuery({
     queryKey: ["movies", "list", { page }],

@@ -1,7 +1,13 @@
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getMovieDetail } from "../../api/movies/get-movie-detail";
-import { useBookmarkStore } from "../../stores/bookmark-store";
+import { MovieRatingSection } from "../../components/movie-rating-section";
+import {
+  useAddFavoriteMutation,
+  useFavoriteStatusQuery,
+  useRemoveFavoriteMutation,
+} from "../../hooks/use-favorites";
+import { useAuthStore } from "../../stores/auth-store";
 import { cn } from "../../lib/cn";
 import { getMovieDetailErrorMessage } from "../../utils/movies/get-movie-detail-error-message";
 import {
@@ -29,10 +35,32 @@ export function MovieDetailPage() {
     enabled: isValidMovieId,
   });
 
-  const isBookmarked = useBookmarkStore((state) =>
-    state.bookmarkedMovieIds.includes(movieId),
-  );
-  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+  const navigate = useNavigate();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const favoriteStatusQuery = useFavoriteStatusQuery(movieId, isValidMovieId);
+  const addFavoriteMutation = useAddFavoriteMutation();
+  const removeFavoriteMutation = useRemoveFavoriteMutation();
+
+  const isBookmarked = favoriteStatusQuery.data?.isFavorite ?? false;
+  const isFavoriteBusy =
+    favoriteStatusQuery.isLoading ||
+    addFavoriteMutation.isPending ||
+    removeFavoriteMutation.isPending;
+
+  const handleToggleFavorite = () => {
+    if (!accessToken) {
+      alert("로그인이 필요해요.");
+      navigate({ to: "/login" });
+      return;
+    }
+    if (isFavoriteBusy) return;
+
+    if (isBookmarked) {
+      removeFavoriteMutation.mutate(movieId);
+    } else {
+      addFavoriteMutation.mutate(movieId);
+    }
+  };
 
   if (!isValidMovieId) {
     return (
@@ -128,10 +156,11 @@ export function MovieDetailPage() {
           </p>
           <button
             type="button"
-            onClick={() => toggleBookmark(movie.id)}
+            onClick={handleToggleFavorite}
+            disabled={isFavoriteBusy}
             aria-pressed={isBookmarked}
             className={cn(
-              "flex h-10.5 w-fit items-center gap-2 rounded-8 border border-bg-surface px-4 text-[14px] font-extrabold text-bg-surface",
+              "flex h-10.5 w-fit items-center gap-2 rounded-8 border border-bg-surface px-4 text-[14px] font-extrabold text-bg-surface disabled:opacity-60",
               isBookmarked ? "bg-action-pressed" : "bg-action-primary",
             )}
           >
@@ -150,6 +179,8 @@ export function MovieDetailPage() {
           </button>
         </div>
       </div>
+
+      <MovieRatingSection movieId={movie.id} />
     </main>
   );
 }

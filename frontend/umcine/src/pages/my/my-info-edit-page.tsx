@@ -1,7 +1,10 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { getMe, type MemberInfo } from "@/api/members/me";
 import { checkNicknameDuplicate } from "@/api/members/check-nickname-duplicate";
 import { useProfileStore } from "@/stores/profile-store";
+import { useUpdateMeMutation } from "@/hooks/use-update-me-mutation";
 
 const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
 
@@ -11,19 +14,35 @@ const fieldClass =
 const inputClass = "min-w-0 flex-1 px-0.5 text-[14px] text-text-primary outline-none";
 
 export function MyInfoEditPage() {
+  const meQuery = useQuery({ queryKey: ["members", "me"], queryFn: getMe });
+
+  if (meQuery.isPending) {
+    return <main className="flex justify-center px-20 py-24 text-text-secondary">내 정보를 불러오는 중이에요.</main>;
+  }
+  if (meQuery.isError) {
+    return <main className="flex justify-center px-20 py-24 text-danger-default">내 정보를 불러오지 못했어요.</main>;
+  }
+
+  // 조회가 끝난 뒤 폼을 그려서 입력칸의 처음 값을 서버 닉네임으로 채운다.
+  return <MyInfoEditForm member={meQuery.data} />;
+}
+
+function MyInfoEditForm({ member }: { member: MemberInfo }) {
   const navigate = useNavigate();
-  const profile = useProfileStore((state) => state.profile);
+  // 프로필 이미지는 API가 없어서 기존처럼 화면 상태로만 저장한다.
+  const savedProfileImageUrl = useProfileStore((state) => state.profile.profileImageUrl);
   const updateProfile = useProfileStore((state) => state.updateProfile);
+  const updateMeMutation = useUpdateMeMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [nickname, setNickname] = useState(profile.nickname);
-  const [profileImageUrl, setProfileImageUrl] = useState(profile.profileImageUrl);
+  const [nickname, setNickname] = useState(member.nickname);
+  const [profileImageUrl, setProfileImageUrl] = useState(savedProfileImageUrl);
   const [nicknameCheck, setNicknameCheck] = useState({ isChecking: false, isAvailable: false });
 
   const trimmedNickname = nickname.trim();
   const isNicknameValid = trimmedNickname.length >= 2 && trimmedNickname.length <= 12;
-  const isNicknameChanged = trimmedNickname !== profile.nickname;
-  const isImageChanged = profileImageUrl !== profile.profileImageUrl;
+  const isNicknameChanged = trimmedNickname !== member.nickname;
+  const isImageChanged = profileImageUrl !== savedProfileImageUrl;
 
   // 닉네임을 바꿨다면 중복 확인을 통과해야 저장할 수 있다.
   const canSave =
@@ -65,11 +84,20 @@ export function MyInfoEditPage() {
     setProfileImageUrl(URL.createObjectURL(file));
   };
 
-  const handleSave = () => {
-    if (!canSave) return;
-    // 8주차에서 내 정보 수정 API 연결
-    updateProfile({ nickname: trimmedNickname, profileImageUrl });
-    navigate({ to: "/my" });
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSave || updateMeMutation.isPending) return;
+
+    const saveImageAndGoBack = () => {
+      updateProfile({ nickname: trimmedNickname, profileImageUrl });
+      navigate({ to: "/my" });
+    };
+
+    if (!isNicknameChanged) {
+      saveImageAndGoBack();
+      return;
+    }
+    updateMeMutation.mutate({ nickname: trimmedNickname }, { onSuccess: saveImageAndGoBack });
   };
 
   return (
@@ -84,20 +112,17 @@ export function MyInfoEditPage() {
         <button
           type="submit"
           form="profile-form"
-          disabled={!canSave}
+          disabled={!canSave || updateMeMutation.isPending}
           className="flex h-10.5 items-center justify-center rounded-8 border border-bg-surface bg-action-primary px-4 text-[14px] font-extrabold text-bg-surface hover:bg-action-hover disabled:bg-action-disabled"
         >
-          변경사항 저장
+          {updateMeMutation.isPending ? "저장 중" : "변경사항 저장"}
         </button>
       </div>
 
       <form
         id="profile-form"
         noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSave();
-        }}
+        onSubmit={handleSubmit}
         className="flex items-center"
       >
         <div className="flex h-[133px] flex-1 flex-col items-center justify-center gap-1">
@@ -167,7 +192,7 @@ export function MyInfoEditPage() {
               <input
                 id="profile-email"
                 type="email"
-                value={profile.email}
+                value={member.email}
                 readOnly
                 className={inputClass}
               />

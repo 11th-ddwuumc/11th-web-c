@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import MovieGrid from "@/components/movie-grid";
 import Pagination from "@/components/pagination";
 import { getMovieDetail } from "@/api/movies/get-movie-detail";
-import { useBookmarkStore } from "@/stores/bookmark-store";
+import { getMe } from "@/api/members/me";
+import { useFavoritesQuery, useRemoveFavoriteMutation } from "@/hooks/use-favorites";
 import { useProfileStore } from "@/stores/profile-store";
 import { getTmdbPosterUrl } from "@/utils/movies/tmdb-image";
 
@@ -12,9 +13,19 @@ import { getTmdbPosterUrl } from "@/utils/movies/tmdb-image";
 const BOOKMARKS_PER_PAGE = 10;
 
 export function MyInfoPage() {
-  const profile = useProfileStore((state) => state.profile);
-  const bookmarkedMovieIds = useBookmarkStore((state) => state.bookmarkedMovieIds);
-  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
+  // 헤더와 같은 queryKey를 써서 내 정보 캐시를 함께 쓴다.
+  const meQuery = useQuery({ queryKey: ["members", "me"], queryFn: getMe });
+  // 프로필 이미지는 API가 없어서 기존처럼 화면 상태로만 둔다.
+  const profileImageUrl = useProfileStore((state) => state.profile.profileImageUrl);
+
+  const favoritesQuery = useFavoritesQuery();
+  const removeFavoriteMutation = useRemoveFavoriteMutation();
+  const bookmarkedMovieIds = (favoritesQuery.data ?? []).map((favorite) => favorite.movieId);
+
+  const handleRemoveFavorite = (movieId: number) => {
+    if (removeFavoriteMutation.isPending) return;
+    removeFavoriteMutation.mutate(movieId);
+  };
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(bookmarkedMovieIds.length / BOOKMARKS_PER_PAGE));
@@ -65,8 +76,8 @@ export function MyInfoPage() {
         <h2 className="text-[17px] font-bold text-text-primary">기본 정보</h2>
         <div className="flex items-center gap-7">
           <span className="flex size-[82px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-border-default">
-            {profile.profileImageUrl ? (
-              <img src={profile.profileImageUrl} alt="프로필 이미지" className="size-full object-cover" />
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt="프로필 이미지" className="size-full object-cover" />
             ) : (
               <img src="/icons/person-avatar.svg" alt="" width={48} height={48} />
             )}
@@ -74,11 +85,11 @@ export function MyInfoPage() {
           <dl className="flex w-[760px] gap-7">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <dt className="text-[11px] text-text-tertiary">닉네임</dt>
-              <dd className="text-[14px] font-bold text-text-primary">{profile.nickname}</dd>
+              <dd className="text-[14px] font-bold text-text-primary">{meQuery.data?.nickname ?? "-"}</dd>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <dt className="text-[11px] text-text-tertiary">이메일</dt>
-              <dd className="text-[14px] font-bold text-text-primary">{profile.email}</dd>
+              <dd className="text-[14px] font-bold text-text-primary">{meQuery.data?.email ?? "-"}</dd>
             </div>
           </dl>
         </div>
@@ -86,7 +97,11 @@ export function MyInfoPage() {
 
       <section className="flex flex-col gap-4">
         <h2 className="text-[17px] font-bold text-text-primary">내 즐겨찾기</h2>
-        {bookmarkedMovieIds.length === 0 ? (
+        {favoritesQuery.isPending ? (
+          <p className="py-16 text-center text-text-secondary">즐겨찾기를 불러오는 중이에요.</p>
+        ) : favoritesQuery.isError ? (
+          <p className="py-16 text-center text-danger-default">즐겨찾기를 불러오지 못했어요.</p>
+        ) : bookmarkedMovieIds.length === 0 ? (
           <p className="py-16 text-center text-text-secondary">즐겨찾기한 영화가 없어요.</p>
         ) : isPending && movieCards.length === 0 ? (
           <p className="py-16 text-center text-text-secondary">즐겨찾기를 불러오는 중이에요.</p>
@@ -95,7 +110,7 @@ export function MyInfoPage() {
             {isError && (
               <p className="text-[13px] text-danger-default">일부 영화를 불러오지 못했어요.</p>
             )}
-            <MovieGrid movies={movieCards} onToggleBookmark={toggleBookmark} />
+            <MovieGrid movies={movieCards} onToggleBookmark={handleRemoveFavorite} />
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}

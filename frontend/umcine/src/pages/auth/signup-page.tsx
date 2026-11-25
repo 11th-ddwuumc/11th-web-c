@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { checkEmailDuplicate } from "@/api/members/check-email-duplicate";
 import { checkNicknameDuplicate } from "@/api/members/check-nickname-duplicate";
-import { signup } from "@/api/members/signup";
-import { useNavigate } from "@tanstack/react-router";
+import { useSignupMutation } from "@/hooks/use-signup-mutation";
 
 // 이메일 형식 검사
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,8 +39,7 @@ export function SignupPage() {
     email: DEFAULT_DUPLICATE_CHECK,
     nickname: DEFAULT_DUPLICATE_CHECK,
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
+  const signupMutation = useSignupMutation();
 
   // 입력값의 유효성 검사
   const isEmailValid = EMAIL_REGEX.test(form.email.trim());
@@ -75,7 +73,10 @@ export function SignupPage() {
     if (key === "email" || key === "nickname") {
       if (duplicateCheck[key].isChecking) return;
       // 확인한 값을 바꾸면 다시 중복 확인해야 함
-      setDuplicateCheck((prev) => ({ ...prev, [key]: DEFAULT_DUPLICATE_CHECK }));
+      setDuplicateCheck((prev) => ({
+        ...prev,
+        [key]: DEFAULT_DUPLICATE_CHECK,
+      }));
     }
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -119,25 +120,16 @@ export function SignupPage() {
     }
   };
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
-    // 폼 제출 시 페이지 새로고침 방지
-    e.preventDefault();
-    if (!canSubmit || isSubmitting) return;
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-    setIsSubmitting(true);
-    try {
-      const response = await signup({
-        email: form.email.trim(),
-        nickname: form.nickname.trim(),
-        password: form.password,
-      });
-      alert(response.message);
-      navigate({ to: "/login" });
-    } catch {
-      alert("회원가입에 실패했어요. 다시 시도해 주세요.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    if (!canSubmit || signupMutation.isPending) return;
+
+    signupMutation.mutate({
+      email: form.email.trim(),
+      nickname: form.nickname.trim(),
+      password: form.password,
+    });
   };
 
   // noValidate는 폼 제출 시 브라우저의 기본 유효성 검사를 끔
@@ -204,7 +196,9 @@ export function SignupPage() {
             </button>
           </div>
           {showNicknameError && (
-            <p className={errorClass}>닉네임은 2자 이상 12자 이하로 입력해 주세요.</p>
+            <p className={errorClass}>
+              닉네임은 2자 이상 12자 이하로 입력해 주세요.
+            </p>
           )}
         </div>
 
@@ -222,8 +216,8 @@ export function SignupPage() {
           />
           {showPasswordError && (
             <p className={errorClass}>
-              영문 대소문자, 숫자, 특수문자(!@#$%^&*)를 모두 포함해 8자 이상 입력해
-              주세요.
+              영문 대소문자, 숫자, 특수문자(!@#$%^&*)를 모두 포함해 8자 이상
+              입력해 주세요.
             </p>
           )}
         </div>
@@ -237,7 +231,9 @@ export function SignupPage() {
             type="password"
             placeholder="비밀번호를 한 번 더 입력해 주세요"
             value={form.passwordConfirm}
-            onChange={(e) => handleChangeField("passwordConfirm", e.target.value)}
+            onChange={(e) =>
+              handleChangeField("passwordConfirm", e.target.value)
+            }
             className={inputClass}
           />
           {showPasswordConfirmError && (
@@ -247,10 +243,10 @@ export function SignupPage() {
 
         <button
           type="submit"
-          disabled={!canSubmit || isSubmitting}
+          disabled={!canSubmit || signupMutation.isPending}
           className="mt-2 h-12 rounded-8 bg-action-primary text-[15px] font-extrabold text-bg-surface hover:bg-action-hover disabled:bg-action-disabled"
         >
-          {isSubmitting ? "가입 중" : "가입하기"}
+          {signupMutation.isPending ? "가입 중" : "가입하기"}
         </button>
       </form>
     </main>
